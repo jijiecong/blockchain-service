@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xmlns:context="http://www.springframework.org/schema/context"
+	   xmlns:aop="http://www.springframework.org/schema/aop"
+	   xmlns:task="http://www.springframework.org/schema/task"
+	   xmlns:tx="http://www.springframework.org/schema/tx" xmlns:p="http://www.springframework.org/schema/p"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context-4.0.xsd
+        http://www.springframework.org/schema/aop 
+        http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+	   http://www.springframework.org/schema/task
+		http://www.springframework.org/schema/task/spring-task-4.0.xsd"
+	   default-autowire="byName" default-lazy-init="false">
+	   
+	
+
+
+   <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="ignoreResourceNotFound" value="false" />
+		<property name="ignoreUnresolvablePlaceholders" value="true" />
+		<property name="locations">
+			<list>
+				<value>classpath:blockchain_service.properties</value>
+				<value>classpath:log4j.properties</value>
+			</list>
+		</property>
+	</bean>
+
+
+	<bean  class="com.meiren.blockchain.utils.SpringBeanUtils"/>
+
+    <import resource="classpath:spring/data-source.xml" />
+
+	<context:component-scan base-package="com.meiren.blockchain.service" />
+
+	<aop:config proxy-target-class="true" />
+
+	<task:annotation-driven/>
+	<bean id="storeService" class="com.meiren.blockchain.service.Impl.StoreServiceImpl"/>
+	<bean id="blockService" class="com.meiren.blockchain.service.Impl.BlockServiceImpl"/>
+	<bean id="diskBlockIndexService" class="com.meiren.blockchain.service.Impl.DiskBlockIndexServiceImpl"/>
+</beans>

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.meiren.blockchain.dao.DiskBlockIndexDAO" >
+<resultMap id="getBlockChain_RM" type="com.meiren.blockchain.dataobject.DiskBlockIndexDO">
+	
+					<id column="blockHash" property="block_hash"/>
+			
+					<result property="nFile" column="n_file"/>
+			
+					<result property="nBlockPos" column="n_block_pos"/>
+
+					<result property="nHeight" column="n_height"/>
+
+					<result property="nextHash" column="next_hash"/>
+
+					<result property="version" column="version"/>
+			
+					<result property="prevHash" column="prev_hash"/>
+			
+					<result property="merkleHash" column="merkle_hash"/>
+
+					<result property="timestamp" column="timestamp"/>
+
+					<result property="bits" column="bits"/>
+
+					<result property="nonce" column="nonce"/>
+				
+</resultMap>
+
+<!-- 所有字段 -->
+<sql id="All_DiskBlockIndex_Fields">
+			            block_hash,
+			            n_file,
+			            n_block_pos,
+			            n_height,
+			            next_hash,
+			            version,
+			            prev_hash,
+			            merkle_hash,
+			            timestamp,
+			            bits,
+			            nonce
+		
+</sql>
+
+<insert id="create" useGeneratedKeys="true" keyColumn="block_hash" keyProperty="block_hash" parameterType="com.meiren.blockchain.dataobject.DiskBlockIndexDO" >
+	INSERT INTO disk_block_index (
+											block_hash,
+								n_file,
+								n_block_pos,
+								n_height,
+								next_hash,
+								version,
+								prev_hash,
+								merkle_hash,
+								timestamp,
+								bits,
+								nonce
+				)
+	VALUES (
+											#{blockHash},
+								#{nFile},
+								#{nBlockPos},
+								#{nHeight},
+								#{nextHash},
+								#{version},
+								#{prevHash},
+								#{merkleHash},
+							  	#{timestamp},
+							  	#{bits},
+							  	#{nonce}
+				)
+</insert>
+
+<select id="findByBlockHash" resultType="com.meiren.blockchain.dataobject.DiskBlockIndexDO" parameterType="String">
+	select <include refid="All_DiskBlockIndex_Fields"/>
+	from disk_block_index
+    WHERE block_hash = #{blockHash}
+</select>
+
+	<select id="getLastestBlockIndex" resultType="com.meiren.blockchain.dataobject.DiskBlockIndexDO" >
+		select <include refid="All_DiskBlockIndex_Fields"/>
+		from disk_block_index order by n_height desc limit 1
+	</select>
+</mapper>
