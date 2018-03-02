@@ -41,4 +41,5 @@
 	<bean id="storeService" class="com.meiren.blockchain.service.Impl.StoreServiceImpl"/>
 	<bean id="blockService" class="com.meiren.blockchain.service.Impl.BlockServiceImpl"/>
 	<bean id="diskBlockIndexService" class="com.meiren.blockchain.service.Impl.DiskBlockIndexServiceImpl"/>
+	<bean id="blockIndexService" class="com.meiren.blockchain.service.Impl.BlockIndexServiceImpl"/>
 </beans>

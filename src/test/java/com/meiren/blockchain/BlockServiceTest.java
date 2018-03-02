@@ -3,6 +3,7 @@ package com.meiren.blockchain;
 import com.meiren.blockchain.common.io.BitcoinInput;
 import com.meiren.blockchain.common.util.HashUtils;
 import com.meiren.blockchain.entity.Block;
+import com.meiren.blockchain.entity.BlockIndex;
 import com.meiren.blockchain.entity.DiskBlockIndex;
 import com.meiren.blockchain.entity.Store;
 import com.meiren.blockchain.service.BlockIndexService;
@@ -36,13 +37,13 @@ public class BlockServiceTest extends BaseServiceTest{
 	@Test
 	public void test1() throws IOException {
 		String[] strArray = new String[]{
-				"http://meiren.pic.1.jpg",
-				"http://meiren.pic.2.jpg",
-				"http://meiren.pic.3.jpg",
-				"http://meiren.pic.4.jpg",
 				"http://meiren.pic.5.jpg",
+				"http://meiren.pic.345.jpg",
+				"http://meiren.pic.54.jpg",
+				"http://meiren.pic.453.jpg",
+				"http://meiren.pic.64.jpg",
 				"http://meiren.pic.6.jpg",
-				"http://meiren.pic.7.jpg"};
+				"http://meiren.pic.63.jpg"};
 		Store[] stores = new Store[strArray.length];
 		for (int i=0; i< strArray.length; i++) {
 			byte[] result = storeService.buildStore(strArray[i]);
@@ -51,19 +52,21 @@ public class BlockServiceTest extends BaseServiceTest{
 			stores[i] = store;
 		}
 //		BlockService blockService = new BlockServiceImpl();
-		byte[] preHash = blockIndexService.getLastestBlockIndex().prevHash;//HashUtils.toBytesAsLittleEndian("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
+		BlockIndex lastestBlockIndex = blockIndexService.getLastestBlockIndex();
+		byte[] preHash = lastestBlockIndex.getBlockHash();//HashUtils.toBytesAsLittleEndian("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
 		Block block = blockService.nextBlock(stores, preHash);
 //		JsonUtils.printJson(block);
 //		byte[] blockData = block.toByteArray();
 //		BitcoinInput input = new BitcoinInput(blockData);
 //		Block block1 = new Block(input);
 //		JsonUtils.printJson(block1);
-		blockService.writeToDisk(block, 1);
+		int nFile = diskBlockIndexService.getMaxnFile() + 1;
+		blockService.writeToDisk(block, nFile);
 //		DiskBlockIndexService diskBlockIndexService = new DiskBlockIndexServiceImpl();
 		DiskBlockIndex diskBlockIndex = new DiskBlockIndex();
 		diskBlockIndex.pHashBlock = block.getBlockHash();
-		diskBlockIndex.nFile = 1;
-		diskBlockIndex.nHeight = 1;
+		diskBlockIndex.nFile = nFile;
+		diskBlockIndex.nHeight = lastestBlockIndex.nHeight + 1;
 		diskBlockIndex.nextHash = null;
 		diskBlockIndex.version = 1;
 		diskBlockIndex.prevHash = block.header.prevHash;
@@ -76,9 +79,8 @@ public class BlockServiceTest extends BaseServiceTest{
 	}
 	@Test
 	public void test2(){
-		BlockService blockService = new BlockServiceImpl();
-		Block block = blockService.readFromDisk(1);
-		System.out.println(new String(block.stores[2].storeScript));
+		Block block = blockService.readFromDisk(2);
+		System.out.println(new String(block.stores[5].storeScript));
 	}
 
 	public static void main(String[] args){

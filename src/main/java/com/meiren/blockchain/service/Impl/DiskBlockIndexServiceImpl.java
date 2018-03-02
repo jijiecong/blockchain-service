@@ -7,6 +7,9 @@ import com.meiren.blockchain.entity.DiskBlockIndex;
 import com.meiren.blockchain.service.DiskBlockIndexService;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * @author jijiecong   （这里替换为自己的名字）
  * @ClassName: DiskBlockIndexServiceImpl
@@ -22,6 +25,11 @@ public class DiskBlockIndexServiceImpl implements DiskBlockIndexService {
 		DiskBlockIndexDO diskBlockIndexDO = new DiskBlockIndexDO();
 		copyToDO(diskBlockIndex, diskBlockIndexDO);
 		diskBlockIndexDAO.create(diskBlockIndexDO);
+
+		Map modifyMap = new HashMap();
+		modifyMap.put("blockHash", diskBlockIndexDO.getPrevHash());
+		modifyMap.put("nextHash", diskBlockIndexDO.getBlockHash());
+		diskBlockIndexDAO.modifyByBlockHash(modifyMap);
 	}
 
 	private void copyToDO(DiskBlockIndex diskBlockIndex, DiskBlockIndexDO diskBlockIndexDO) {
@@ -41,5 +49,10 @@ public class DiskBlockIndexServiceImpl implements DiskBlockIndexService {
 	public DiskBlockIndex readFromDisk() {
 		//这里用读取mysql替代
 		return null;
+	}
+
+	@Override
+	public int getMaxnFile() {
+		return diskBlockIndexDAO.getMaxnFile();
 	}
 }

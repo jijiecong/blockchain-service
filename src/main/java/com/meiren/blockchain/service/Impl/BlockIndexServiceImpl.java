@@ -30,15 +30,17 @@ public class BlockIndexServiceImpl implements BlockIndexService {
 		DiskBlockIndexDO diskBlockIndexDO = diskBlockIndexDAO.getLastestBlockIndex();
 		DiskBlockIndex diskBlockIndex = new DiskBlockIndex();
 		copyFromDO(diskBlockIndex, diskBlockIndexDO);
-		BlockIndex blockIndex = new BlockIndex();
-		BeanUtils.copyProperties(diskBlockIndex, blockIndex);
+		BlockIndex blockIndex = diskBlockIndex;
+
 
 		DiskBlockIndexDO diskBlockIndexDO_prev = diskBlockIndexDAO.findByBlockHash(diskBlockIndexDO.getPrevHash());
-		DiskBlockIndex diskBlockIndex_prev = new DiskBlockIndex();
-		copyFromDO(diskBlockIndex_prev, diskBlockIndexDO_prev);
-		BlockIndex blockIndex_pre = new BlockIndex();
-		BeanUtils.copyProperties(diskBlockIndex_prev, blockIndex_pre);
-		blockIndex.pprev = blockIndex_pre;
+		if(diskBlockIndexDO_prev != null){
+			DiskBlockIndex diskBlockIndex_prev = new DiskBlockIndex();
+			copyFromDO(diskBlockIndex_prev, diskBlockIndexDO_prev);
+			BlockIndex blockIndex_pre = new BlockIndex();
+			BeanUtils.copyProperties(diskBlockIndex_prev, blockIndex_pre);
+			blockIndex.pprev = blockIndex_pre;
+		}
 		return blockIndex;
 	}
 

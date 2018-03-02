@@ -83,4 +83,14 @@
 		select <include refid="All_DiskBlockIndex_Fields"/>
 		from disk_block_index order by n_height desc limit 1
 	</select>
+
+	<update id="modifyByBlockHash" parameterType="java.util.HashMap">
+		UPDATE disk_block_index
+		SET next_hash = #{nextHash}
+		WHERE block_hash = #{blockHash}
+	</update>
+
+	<select id="getMaxnFile" resultType="int">
+		SELECT MAX(n_file) FROM disk_block_index
+	</select>
 </mapper>
