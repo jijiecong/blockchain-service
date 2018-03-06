@@ -83,6 +83,10 @@ public class BlockServiceTest extends BaseServiceTest{
 		System.out.println(new String(block.stores[5].storeScript));
 	}
 
+	@Test
+	public void test3() throws IOException {
+		blockService.init();
+	}
 	public static void main(String[] args){
 
 		System.out.println("请输入小时：");

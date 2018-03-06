@@ -91,6 +91,6 @@
 	</update>
 
 	<select id="getMaxnFile" resultType="int">
-		SELECT MAX(n_file) FROM disk_block_index
+		SELECT IFNULL(MAX(n_file),0) FROM disk_block_index
 	</select>
 </mapper>
