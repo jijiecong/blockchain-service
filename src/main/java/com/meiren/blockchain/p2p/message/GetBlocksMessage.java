@@ -63,4 +63,11 @@ public class GetBlocksMessage extends Message {
 				+ HashUtils.toHexStringAsLittleEndian(this.hashStop) + ")";
 	}
 
+	public byte[][] getHashes(){
+		return this.hashes;
+	}
+
+	public byte[] getHashStop(){
+		return this.hashStop;
+	}
 }

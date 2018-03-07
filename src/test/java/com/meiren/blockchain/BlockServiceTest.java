@@ -87,49 +87,4 @@ public class BlockServiceTest extends BaseServiceTest{
 	public void test3() throws IOException {
 		blockService.init();
 	}
-	public static void main(String[] args){
-
-		System.out.println("请输入小时：");
-		//int length=input.nextInt();//输入一个正整数
-		int h = getHour();//小时
-		System.out.println("请输入分钟：");
-		int m = getMin();//分
-		System.out.println("您输入的时间为："+ h +"点" +m +"分");
-		int PER_HOUR = 30;//每小时在时钟上的角度
-		double PER_MIN_IN_HOUR = 0.5;//每分钟在一个小时格子里的角度
-		int PER_MIN = 6;//每分钟在时钟上的角度
-
-		double d = m*PER_MIN-(h*PER_HOUR+m*PER_MIN_IN_HOUR);
-		if(d<0){
-			d=0-d;
-		}
-		System.out.println(d);
-	}
-
-	private static int getHour(){
-		Scanner input=new Scanner(System.in);
-		int h = input.nextInt();
-		if(h >= 0 && h <= 23){
-			if(h > 12) {
-				h = h -12;
-			}
-			input.close();
-			return h;
-		}else {
-			System.out.println("请输入0-23之间的数字！");
-			return getHour();
-		}
-	}
-
-	private static int getMin(){
-		Scanner input=new Scanner(System.in);
-		int m = input.nextInt();
-		if(m >= 0 && m <= 59){
-			input.close();
-			return m;
-		}else {
-			System.out.println("请输入0-59之间的数字！");
-			return getMin();
-		}
-	}
 }

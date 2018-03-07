@@ -24,11 +24,6 @@
       <artifactId>blockchain-api</artifactId>
       <version>1.0.1-SNAPSHOT</version>
     </dependency>
-    <dependency>
-      <groupId>org.meiren</groupId>
-      <artifactId>common-data</artifactId>
-      <version>1.0.3</version>
-    </dependency>
 
     <!-- 添加junit单元测试包 -->
     <dependency>
@@ -161,7 +156,7 @@
                   <outputDirectory>${project.build.outputDirectory}</outputDirectory>
                   <resources>
                     <resource>
-                      <directory>/home/deploy/conf/family-service/</directory>
+                      <directory>/home/deploy/conf/blockchain-service/</directory>
                       <filtering>false</filtering>
                     </resource>
                   </resources>
@@ -205,7 +200,7 @@
   </profiles>
 
   <build>
-    <finalName>family-service</finalName>
+    <finalName>blockchain-service</finalName>
     <plugins>
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>

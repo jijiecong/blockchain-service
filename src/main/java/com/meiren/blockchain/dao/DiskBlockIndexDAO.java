@@ -25,6 +25,13 @@ public interface DiskBlockIndexDAO {
     public DiskBlockIndexDO findByBlockHash (String blockHash) ;
 
     /**
+     * findByPrevBlockHash.
+     * @param prevBlockHash
+     * @return {@link DiskBlockIndexDO}
+     */
+    public DiskBlockIndexDO findByPrevBlockHash (String prevBlockHash) ;
+
+    /**
      * getLastestBlockIndex.
      * @return {@link DiskBlockIndexDO}
      */

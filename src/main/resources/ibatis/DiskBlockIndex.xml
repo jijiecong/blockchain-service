@@ -93,4 +93,10 @@
 	<select id="getMaxnFile" resultType="int">
 		SELECT IFNULL(MAX(n_file),0) FROM disk_block_index
 	</select>
+
+	<select id="findByPrevBlockHash" resultType="com.meiren.blockchain.dataobject.DiskBlockIndexDO" parameterType="String">
+		select <include refid="All_DiskBlockIndex_Fields"/>
+		from disk_block_index
+		WHERE prev_hash = #{prevHash}
+	</select>
 </mapper>

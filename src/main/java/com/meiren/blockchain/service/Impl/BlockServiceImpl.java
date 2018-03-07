@@ -20,6 +20,7 @@ import com.meiren.blockchain.p2p.message.*;
 import com.meiren.blockchain.service.BlockService;
 import com.meiren.blockchain.service.DiskBlockIndexService;
 import com.meiren.blockchain.service.StoreService;
+import com.meiren.common.utils.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,6 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -210,8 +210,8 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		}
 	}
 
-	//定义一个按一定频率执行的定时任务，每隔10分钟执行一次，延迟10秒执行
-	@Scheduled(initialDelay =10*1000 , fixedRate = 10*60*1000)
+//	//定义一个按一定频率执行的定时任务，每隔10分钟执行一次，延迟10秒执行
+//	@Scheduled(initialDelay =10*1000 , fixedRate = 10*60*1000)
 	public void packStoresIntoBlock() {
 		lock.lock();
 		try {
@@ -303,9 +303,32 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	 * update the blockChain
 	 */
 	private void handelGetBlockMessageFromPeer(GetBlocksMessage getBlocksMsg, MessageSender sender) {
-		Block block = new Block();
 		try {
-			sender.sendMessage(new BlockMessage(block.toByteArray()));
+			if(getBlocksMsg.getHashStop().equals(BitcoinConstants.ZERO_HASH_BYTES)){
+				String blockHash = HashUtils.toHexStringAsLittleEndian(getBlocksMsg.getHashes()[0]);
+				while(true){
+					DiskBlockIndexDO diskBlockIndexDO = diskBlockIndexDAO.findByPrevBlockHash(blockHash);
+					if(diskBlockIndexDO!=null){
+						Block block = readFromDisk(diskBlockIndexDO.getnFile());
+						sender.sendMessage(new BlockMessage(block.toByteArray()));
+						if(StringUtils.isBlank(diskBlockIndexDO.getNextHash())){
+							break;
+						}
+					}else {
+						break;
+					}
+				}
+			}else {
+				for(byte[] hash : getBlocksMsg.getHashes()){
+					String blockHash = HashUtils.toHexStringAsLittleEndian(hash);
+					DiskBlockIndexDO diskBlockIndexDO = diskBlockIndexDAO.findByPrevBlockHash(blockHash);
+					if(diskBlockIndexDO != null){
+						Block block = readFromDisk(diskBlockIndexDO.getnFile());
+						sender.sendMessage(new BlockMessage(block.toByteArray()));
+					}
+				}
+			}
+			log.info("handle the getBlock request successful!");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -342,7 +365,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			}
 			// check stores:
 			if (!checkStores(block)) {
-				log.error("Check transactions failed.");
+				log.error("Check stores failed.");
 				this.deque.clear();
 				System.exit(1);
 				return;
