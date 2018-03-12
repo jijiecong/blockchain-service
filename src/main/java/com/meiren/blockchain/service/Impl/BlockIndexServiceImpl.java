@@ -28,6 +28,9 @@ public class BlockIndexServiceImpl implements BlockIndexService {
 	public BlockIndex getLastestBlockIndex() {
 
 		DiskBlockIndexDO diskBlockIndexDO = diskBlockIndexDAO.getLastestBlockIndex();
+		if(diskBlockIndexDO == null){
+			return null;
+		}
 		DiskBlockIndex diskBlockIndex = new DiskBlockIndex();
 		copyFromDO(diskBlockIndex, diskBlockIndexDO);
 		BlockIndex blockIndex = diskBlockIndex;

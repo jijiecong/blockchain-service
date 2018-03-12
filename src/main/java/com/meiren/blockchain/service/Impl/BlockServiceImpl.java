@@ -9,14 +9,12 @@ import com.meiren.blockchain.common.util.JsonUtils;
 import com.meiren.blockchain.common.util.LRUCache;
 import com.meiren.blockchain.dao.DiskBlockIndexDAO;
 import com.meiren.blockchain.dataobject.DiskBlockIndexDO;
-import com.meiren.blockchain.entity.Block;
-import com.meiren.blockchain.entity.Header;
-import com.meiren.blockchain.entity.InvVect;
-import com.meiren.blockchain.entity.Store;
+import com.meiren.blockchain.entity.*;
 import com.meiren.blockchain.p2p.MessageListener;
 import com.meiren.blockchain.p2p.MessageSender;
 import com.meiren.blockchain.p2p.PeerConnectionPool;
 import com.meiren.blockchain.p2p.message.*;
+import com.meiren.blockchain.service.BlockIndexService;
 import com.meiren.blockchain.service.BlockService;
 import com.meiren.blockchain.service.DiskBlockIndexService;
 import com.meiren.blockchain.service.StoreService;
@@ -79,6 +77,9 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	private StoreService storeService;
 	@Autowired
 	private DiskBlockIndexDAO diskBlockIndexDAO;
+	@Autowired
+	private BlockIndexService blockIndexService;
+
 
 	public void importBlockChain() {
 
@@ -210,13 +211,14 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		}
 	}
 
-//	//定义一个按一定频率执行的定时任务，每隔10分钟执行一次，延迟10秒执行
-//	@Scheduled(initialDelay =10*1000 , fixedRate = 10*60*1000)
+	//定义一个按一定频率执行的定时任务，每隔10分钟执行一次，延迟10秒执行
+	@Scheduled(initialDelay =10*1000 , fixedRate = 10*60*1000)
 	public void packStoresIntoBlock() {
 		lock.lock();
 		try {
 			//当前store池有多少待处理的
 			int size = this.storePool.size();
+			log.info("pack "+size+" stores into block!");
 			Store[] stores = new Store[size];
 			Iterator<Map.Entry<String, Store>> it = this.storePool.entrySet().iterator();
 			int index = 0;
@@ -224,7 +226,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				Map.Entry<String, Store> entry = it.next();
 //				System.out.println(entry.getKey() + ":" + entry.getValue());
 				stores[index] = entry.getValue();
-				it.remove(); //删除元素
+//				it.remove(); //删除元素
 				index++;
 				if(index == size){
 					break;
@@ -292,6 +294,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				return false;
 			}
 			this.storePool.put(hash, store);
+			log.info("store " + hash + " was added in pool.");
 			return true;
 		} finally {
 			lock.unlock();
@@ -314,6 +317,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 						if(StringUtils.isBlank(diskBlockIndexDO.getNextHash())){
 							break;
 						}
+						blockHash = diskBlockIndexDO.getBlockHash();
 					}else {
 						break;
 					}
@@ -373,6 +377,20 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			int nFile = diskBlockIndexService.getMaxnFile() + 1;
 			writeToDisk(block, nFile);
 			this.lastBlockHash = hash;
+
+			BlockIndex lastestBlockIndex = blockIndexService.getLastestBlockIndex();
+			DiskBlockIndex diskBlockIndex = new DiskBlockIndex();
+			diskBlockIndex.pHashBlock = block.getBlockHash();
+			diskBlockIndex.nFile = nFile;
+			diskBlockIndex.nHeight = lastestBlockIndex.nHeight + 1;
+			diskBlockIndex.nextHash = null;
+			diskBlockIndex.version = 1;
+			diskBlockIndex.prevHash = block.header.prevHash;
+			diskBlockIndex.merkleHash = block.calculateMerkleHash();
+			diskBlockIndex.timestamp = System.currentTimeMillis();
+			diskBlockIndex.bits = block.header.bits;
+			diskBlockIndex.nonce = block.header.nonce;
+			diskBlockIndexService.writeToDisk(diskBlockIndex);
 			log.info("Added block: " + hash);
 		} finally {
 			lock.unlock();
