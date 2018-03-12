@@ -173,9 +173,10 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			byte[] result = storeService.buildStore("meiren_blockchain_service");
 			BitcoinInput input = new BitcoinInput(result);
 			Store store = new Store(input);
-			stores[1] = store;
-			Block block = nextBlock(stores, HashUtils.toBytesAsLittleEndian("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
+			stores[0] = store;
+			Block block = nextBlock(stores, HashUtils.toBytesAsLittleEndian("0000000000000000000000000000000000000000000000000000000000000000"));
 			processNextBlock(block);
+			nFile = 1;
 		}
 		// get last block:
 		Block last = readFromDisk(nFile);
@@ -382,7 +383,11 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			DiskBlockIndex diskBlockIndex = new DiskBlockIndex();
 			diskBlockIndex.pHashBlock = block.getBlockHash();
 			diskBlockIndex.nFile = nFile;
-			diskBlockIndex.nHeight = lastestBlockIndex.nHeight + 1;
+			if(lastestBlockIndex == null){
+				diskBlockIndex.nHeight = 1;
+			}else {
+				diskBlockIndex.nHeight = lastestBlockIndex.nHeight + 1;
+			}
 			diskBlockIndex.nextHash = null;
 			diskBlockIndex.version = 1;
 			diskBlockIndex.prevHash = block.header.prevHash;

@@ -27,7 +27,7 @@ public class PeerManager {
 		this.cached = cachedFile;
 		Peer[] cachedPeers = loadPeers();
 		addPeers(cachedPeers);
-		if (peers.size() < 5) {
+		if (peers.size() < 1) {
 			// lookup from DNS:
 			Thread t = new Thread() {
 				public void run() {

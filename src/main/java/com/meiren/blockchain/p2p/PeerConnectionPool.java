@@ -31,7 +31,7 @@ public class PeerConnectionPool extends Thread implements PeerListener {
 	public PeerConnectionPool(MessageListener messageListener, int poolSize) {
 		this.messageListener = messageListener;
 		this.poolSize = poolSize;
-		this.peerManager = new PeerManager(new File(".peercache.json"));
+		this.peerManager = new PeerManager(new File(".peercache2.json"));
 	}
 
 	@Override

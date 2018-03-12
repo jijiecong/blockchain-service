@@ -84,7 +84,10 @@ public class BlockServiceTest extends BaseServiceTest{
 	}
 
 	@Test
-	public void test3() throws IOException {
+	public void test3() throws IOException, InterruptedException {
 		blockService.init();
+		while (true){
+			int i =1;
+		}
 	}
 }
