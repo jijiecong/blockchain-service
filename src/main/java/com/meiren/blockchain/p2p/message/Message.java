@@ -1,9 +1,9 @@
 package com.meiren.blockchain.p2p.message;
 
-import com.meiren.blockchain.common.BitcoinException;
-import com.meiren.blockchain.common.constant.BitcoinConstants;
-import com.meiren.blockchain.common.io.BitcoinInput;
-import com.meiren.blockchain.common.io.BitcoinOutput;
+import com.meiren.blockchain.common.BlockChainException;
+import com.meiren.blockchain.common.constant.BlockChainConstants;
+import com.meiren.blockchain.common.io.BlockChainInput;
+import com.meiren.blockchain.common.io.BlockChainOutput;
 import com.meiren.blockchain.common.util.HashUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -17,7 +17,7 @@ import java.util.Map;
 
 /**
  * P2P message:
- * https://en.bitcoin.it/wiki/Protocol_documentation#Message_structure
+ * https://en.BlockChain.it/wiki/Protocol_documentation#Message_structure
  * 
  * @author jijc
  */
@@ -31,7 +31,7 @@ public abstract class Message {
 
 	public byte[] toByteArray() {
 		byte[] payload = getPayload();
-		return new BitcoinOutput().writeInt(BitcoinConstants.MAGIC) // magic
+		return new BlockChainOutput().writeInt(BlockChainConstants.MAGIC) // magic
 				.write(this.command) // command: char[12]
 				.writeInt(payload.length) // length: uint32_t
 				.write(getCheckSum(payload)) // checksum: uint32_t
@@ -56,7 +56,7 @@ public abstract class Message {
 			}
 		}
 		if (n <= 0) {
-			throw new BitcoinException("Bad command bytes.");
+			throw new BlockChainException("Bad command bytes.");
 		}
 		byte[] b = Arrays.copyOfRange(cmd, 0, n + 1);
 		return new String(b, StandardCharsets.UTF_8);
@@ -103,9 +103,9 @@ public abstract class Message {
 		 * Parse stream as message.
 		 */
 		@SuppressWarnings("unchecked")
-		public static <T extends Message> T parseMessage(BitcoinInput input) throws IOException {
-			if (input.readInt() != BitcoinConstants.MAGIC) {
-				throw new BitcoinException("Bad magic.");
+		public static <T extends Message> T parseMessage(BlockChainInput input) throws IOException {
+			if (input.readInt() != BlockChainConstants.MAGIC) {
+				throw new BlockChainException("Bad magic.");
 			}
 			String command = getCommandFrom(input.readBytes(12));
 			int payloadLength = input.readInt();
@@ -116,7 +116,7 @@ public abstract class Message {
 			// check:
 			byte[] actualChecksum = getCheckSum(payload);
 			if (!Arrays.equals(expectedChecksum, actualChecksum)) {
-				throw new BitcoinException("Checksum failed.");
+				throw new BlockChainException("Checksum failed.");
 			}
 			log.info("MSG: " + command + " payload (" + payloadLength + ")");
 			// build msg:

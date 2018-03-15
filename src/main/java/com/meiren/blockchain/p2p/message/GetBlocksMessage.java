@@ -1,9 +1,9 @@
 package com.meiren.blockchain.p2p.message;
 
 
-import com.meiren.blockchain.common.constant.BitcoinConstants;
-import com.meiren.blockchain.common.io.BitcoinInput;
-import com.meiren.blockchain.common.io.BitcoinOutput;
+import com.meiren.blockchain.common.constant.BlockChainConstants;
+import com.meiren.blockchain.common.io.BlockChainInput;
+import com.meiren.blockchain.common.io.BlockChainOutput;
 import com.meiren.blockchain.common.util.HashUtils;
 
 import java.io.ByteArrayInputStream;
@@ -12,7 +12,7 @@ import java.util.Arrays;
 
 /**
  * Build P2P message:
- * https://en.bitcoin.it/wiki/Protocol_documentation#Message_structure
+ * https://en.BlockChain.it/wiki/Protocol_documentation#Message_structure
  * 
  * @author jijc
  */
@@ -25,14 +25,14 @@ public class GetBlocksMessage extends Message {
 
 	public GetBlocksMessage(byte[] firstHash, byte[] hashStop) {
 		super("getblocks");
-		this.version = BitcoinConstants.PROTOCOL_VERSION;
+		this.version = BlockChainConstants.PROTOCOL_VERSION;
 		this.hashes = new byte[][] { firstHash };
 		this.hashStop = hashStop;
 	}
 
 	public GetBlocksMessage(byte[] payload) throws IOException {
 		super("getblocks");
-		try (BitcoinInput input = new BitcoinInput(new ByteArrayInputStream(payload))) {
+		try (BlockChainInput input = new BlockChainInput(new ByteArrayInputStream(payload))) {
 			this.version = input.readInt();
 			long hashCount = input.readVarInt(); // do not keep hash count
 			this.hashes = new byte[(int) hashCount][];
@@ -45,7 +45,7 @@ public class GetBlocksMessage extends Message {
 
 	@Override
 	protected byte[] getPayload() {
-		BitcoinOutput output = new BitcoinOutput();
+		BlockChainOutput output = new BlockChainOutput();
 		output.writeInt(this.version).writeVarInt(this.hashes.length);
 		for (int i = 0; i < this.hashes.length; i++) {
 			output.write(this.hashes[i]);

@@ -1,7 +1,7 @@
 package com.meiren.blockchain.service.Impl;
 
-import com.meiren.blockchain.common.constant.BitcoinConstants;
-import com.meiren.blockchain.common.io.BitcoinOutput;
+import com.meiren.blockchain.common.constant.BlockChainConstants;
+import com.meiren.blockchain.common.io.BlockChainOutput;
 import com.meiren.blockchain.service.StoreService;
 
 /**
@@ -18,9 +18,9 @@ public class StoreServiceImpl implements StoreService {
 	 *
 	 * */
 	public byte[] buildStore(String url) {
-		BitcoinOutput output = new BitcoinOutput();
+		BlockChainOutput output = new BlockChainOutput();
 		// store version:
-		output.writeInt(BitcoinConstants.TX_VERSION);
+		output.writeInt(BlockChainConstants.TX_VERSION);
 		byte[] storeScript = createStoreScript(url);
 		// storeScript length:
 		output.writeVarInt(storeScript.length);

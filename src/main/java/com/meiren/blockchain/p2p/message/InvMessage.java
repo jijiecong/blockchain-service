@@ -1,8 +1,8 @@
 package com.meiren.blockchain.p2p.message;
 
 
-import com.meiren.blockchain.common.io.BitcoinInput;
-import com.meiren.blockchain.common.io.BitcoinOutput;
+import com.meiren.blockchain.common.io.BlockChainInput;
+import com.meiren.blockchain.common.io.BlockChainOutput;
 import com.meiren.blockchain.common.util.HashUtils;
 import com.meiren.blockchain.entity.InvVect;
 
@@ -21,7 +21,7 @@ public class InvMessage extends Message {
 
 	public InvMessage(byte[] payload) throws IOException {
 		super("inv");
-		try (BitcoinInput input = new BitcoinInput(new ByteArrayInputStream(payload))) {
+		try (BlockChainInput input = new BlockChainInput(new ByteArrayInputStream(payload))) {
 			long count = input.readVarInt(); // do not store count
 			this.inventory = new InvVect[(int) count];
 			for (int i = 0; i < this.inventory.length; i++) {
@@ -48,7 +48,7 @@ public class InvMessage extends Message {
 
 	@Override
 	protected byte[] getPayload() {
-		BitcoinOutput output = new BitcoinOutput();
+		BlockChainOutput output = new BlockChainOutput();
 		output.writeVarInt(this.inventory.length);
 		for (int i = 0; i < this.inventory.length; i++) {
 			output.write(this.inventory[i].toByteArray());

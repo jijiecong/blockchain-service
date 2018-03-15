@@ -1,9 +1,9 @@
 package com.meiren.blockchain.p2p.message;
 
 
-import com.meiren.blockchain.common.constant.BitcoinConstants;
-import com.meiren.blockchain.common.io.BitcoinInput;
-import com.meiren.blockchain.common.io.BitcoinOutput;
+import com.meiren.blockchain.common.constant.BlockChainConstants;
+import com.meiren.blockchain.common.io.BlockChainInput;
+import com.meiren.blockchain.common.io.BlockChainOutput;
 import com.meiren.blockchain.common.util.NetworkUtils;
 import com.meiren.blockchain.entity.NetworkAddress;
 
@@ -34,7 +34,7 @@ public class VersionMessage extends Message {
 
 	public VersionMessage(byte[] payload) throws IOException {
 		super("version");
-		try (BitcoinInput input = new BitcoinInput(new ByteArrayInputStream(payload))) {
+		try (BlockChainInput input = new BlockChainInput(new ByteArrayInputStream(payload))) {
 			this.protocolVersion = input.readInt();
 			this.services = input.readLong();
 			this.timestamp = input.readLong();
@@ -57,20 +57,20 @@ public class VersionMessage extends Message {
 
 	public VersionMessage(int lastBlock, InetAddress recipientAddr) {
 		super("version");
-		this.protocolVersion = BitcoinConstants.PROTOCOL_VERSION;
-		this.services = BitcoinConstants.NETWORK_SERVICES;
+		this.protocolVersion = BlockChainConstants.PROTOCOL_VERSION;
+		this.services = BlockChainConstants.NETWORK_SERVICES;
 		this.timestamp = Instant.now().getEpochSecond();
 		this.recipientAddress = new NetworkAddress(recipientAddr);
 		this.senderAddress = new NetworkAddress(NetworkUtils.getLocalInetAddress());
-		this.nonce = BitcoinConstants.NODE_ID;
-		this.subVersion = BitcoinConstants.SUB_VERSION;
+		this.nonce = BlockChainConstants.NODE_ID;
+		this.subVersion = BlockChainConstants.SUB_VERSION;
 		this.lastBlock = lastBlock;
 		this.relay = true;
 	}
 
 	@Override
 	protected byte[] getPayload() {
-		BitcoinOutput output = new BitcoinOutput();
+		BlockChainOutput output = new BlockChainOutput();
 		output.writeInt(this.protocolVersion) // protocol
 				.writeLong(this.services) // services
 				.writeLong(timestamp) // timestamp

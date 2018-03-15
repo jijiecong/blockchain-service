@@ -1,7 +1,7 @@
 package com.meiren.blockchain.p2p;
 
-import com.meiren.blockchain.common.constant.BitcoinConstants;
-import com.meiren.blockchain.common.io.BitcoinInput;
+import com.meiren.blockchain.common.constant.BlockChainConstants;
+import com.meiren.blockchain.common.io.BlockChainInput;
 import com.meiren.blockchain.p2p.message.Message;
 import com.meiren.blockchain.p2p.message.VersionMessage;
 import org.apache.commons.logging.Log;
@@ -46,7 +46,7 @@ public class PeerConnection extends Thread implements MessageSender {
 		this.running = true;
 		// connect:
 		try (Socket sock = new Socket()) {
-			sock.connect(new InetSocketAddress(nodeIp, BitcoinConstants.PORT), 10000);
+			sock.connect(new InetSocketAddress(nodeIp, BlockChainConstants.PORT), 100000);
 			sock.setSoTimeout(10000);
 			try (InputStream input = sock.getInputStream()) {
 				try (OutputStream output = sock.getOutputStream()) {
@@ -69,7 +69,7 @@ public class PeerConnection extends Thread implements MessageSender {
 						}
 						// try receive message:
 						if (this.running && (input.available() > 0)) {
-							BitcoinInput in = new BitcoinInput(input);
+							BlockChainInput in = new BlockChainInput(input);
 							Message parsedMsg = Message.Builder.parseMessage(in);
 							log.info("<= " + parsedMsg);
 							this.listener.onMessage(this, parsedMsg);

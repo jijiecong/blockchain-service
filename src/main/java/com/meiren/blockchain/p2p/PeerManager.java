@@ -27,7 +27,7 @@ public class PeerManager {
 		this.cached = cachedFile;
 		Peer[] cachedPeers = loadPeers();
 		addPeers(cachedPeers);
-		if (peers.size() < 1) {
+		if (peers.size() == 0) {
 			// lookup from DNS:
 			Thread t = new Thread() {
 				public void run() {
@@ -94,7 +94,7 @@ public class PeerManager {
 				this.peers.remove(target);
 			}
 		}
-		storePeers();
+//		storePeers();
 	}
 
 	public synchronized void addPeers(String[] ips) {
@@ -108,12 +108,12 @@ public class PeerManager {
 	public synchronized void addPeers(Peer[] ps) {
 		log.info("Add discovered " + ps.length + " peers...");
 		for (Peer p : ps) {
-			if (!this.peers.contains(p)) {
+//			if (!this.peers.contains(p)) {
 				this.peers.add(p);
-			}
+//			}
 		}
 		log.info("Total peers: " + this.peers.size());
-		storePeers();
+//		storePeers();
 	}
 
 	public synchronized void close() {
@@ -141,6 +141,10 @@ public class PeerManager {
 				log.warn("Write peers to cached file failed: " + this.cached.getAbsolutePath(), e);
 			}
 		}
+	}
+
+	public List<Peer> getPeers(){
+		return this.peers;
 	}
 
 	public static void main(String[] args) throws Exception {

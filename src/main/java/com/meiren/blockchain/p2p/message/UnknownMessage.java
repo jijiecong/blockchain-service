@@ -2,7 +2,7 @@ package com.meiren.blockchain.p2p.message;
 
 /**
  * Build P2P message:
- * https://en.bitcoin.it/wiki/Protocol_documentation#Message_structure
+ * https://en.BlockChain.it/wiki/Protocol_documentation#Message_structure
  * 
  * @author jijc
  */

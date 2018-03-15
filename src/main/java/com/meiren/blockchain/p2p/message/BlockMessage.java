@@ -1,7 +1,8 @@
 package com.meiren.blockchain.p2p.message;
 
-import com.meiren.blockchain.common.io.BitcoinInput;
+import com.meiren.blockchain.common.io.BlockChainInput;
 import com.meiren.blockchain.entity.Block;
+import com.meiren.blockchain.entity.Store;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -11,7 +12,7 @@ import java.util.Arrays;
 
 /**
  * Build P2P message:
- * https://en.bitcoin.it/wiki/Protocol_documentation#Message_structure
+ * https://en.BlockChain.it/wiki/Protocol_documentation#Message_structure
  * 
  * @author jijc
  */
@@ -27,7 +28,7 @@ public class BlockMessage extends Message {
 
 	public BlockMessage(byte[] payload) throws IOException {
 		super("block");
-		try (BitcoinInput input = new BitcoinInput(new ByteArrayInputStream(payload))) {
+		try (BlockChainInput input = new BlockChainInput(new ByteArrayInputStream(payload))) {
 			this.block = new Block(input);
 		}
 	}
@@ -47,6 +48,10 @@ public class BlockMessage extends Message {
 			return false;
 		}
 		// TODO: validate bits:
+//		Store[] stores = this.block.stores;
+//		for(Store store : stores){
+//			new String(store.storeScript);
+//		}
 		return true;
 	}
 

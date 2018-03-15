@@ -1,8 +1,8 @@
 package com.meiren.blockchain.service.Impl;
 
 
-import com.meiren.blockchain.common.constant.BitcoinConstants;
-import com.meiren.blockchain.common.io.BitcoinInput;
+import com.meiren.blockchain.common.constant.BlockChainConstants;
+import com.meiren.blockchain.common.io.BlockChainInput;
 import com.meiren.blockchain.common.util.BlockChainFileUtils;
 import com.meiren.blockchain.common.util.HashUtils;
 import com.meiren.blockchain.common.util.JsonUtils;
@@ -13,6 +13,7 @@ import com.meiren.blockchain.entity.*;
 import com.meiren.blockchain.p2p.MessageListener;
 import com.meiren.blockchain.p2p.MessageSender;
 import com.meiren.blockchain.p2p.PeerConnectionPool;
+import com.meiren.blockchain.p2p.PeerServer;
 import com.meiren.blockchain.p2p.message.*;
 import com.meiren.blockchain.service.BlockIndexService;
 import com.meiren.blockchain.service.BlockService;
@@ -25,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.*;
@@ -49,7 +51,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	 * The latest block hash. Using hazelcast distributed object in distributed
 	 * environment.
 	 */
-	private volatile String lastBlockHash = BitcoinConstants.ZERO_HASH;
+	private volatile String lastBlockHash = BlockChainConstants.ZERO_HASH;
 
 	/**
 	 * To-be-processed BlockMessage objects.
@@ -70,6 +72,8 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	 * Connection Pool
 	 */
 	private PeerConnectionPool pool;
+
+	private PeerServer server;
 
 	@Autowired
 	private DiskBlockIndexService diskBlockIndexService;
@@ -126,7 +130,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	public Block readFromDisk(int nFile) {
 		String pathBlk = "D:\\meiren\\blocks\\";
 		byte[] blockdata = BlockChainFileUtils.readFiletoByteArray(pathBlk+"blk"+nFile+".dat");
-		BitcoinInput input = new BitcoinInput(blockdata);
+		BlockChainInput input = new BlockChainInput(blockdata);
 		Block block = null;
 		try {
 			block = new Block(input);
@@ -141,6 +145,16 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	public void init() throws IOException {
 		initBlockData();
 		initConnectionPool();
+		initServer();
+	}
+
+	private void initServer() throws IOException {
+		ServerSocket serverSocket = new ServerSocket(BlockChainConstants.PORT);
+		log.info("等待其他节点连接...");
+		while(true){
+			this.server = new PeerServer(serverSocket, this);
+			server.start();
+		}
 	}
 
 	public void destroy() {
@@ -164,14 +178,14 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		if (nFile == 0) {
 			// add genesis block:
 			log.info("Add genesis block...");
-//			try (BitcoinInput input = new BitcoinInput(BitcoinConstants.GENESIS_BLOCK_DATA)) {
+//			try (BlockChainInput input = new BlockChainInput(BlockChainConstants.GENESIS_BLOCK_DATA)) {
 //				Block gb = new Block(input);
 //				processNextBlock(gb);
 //			}
 
 			Store[] stores = new Store[1];
 			byte[] result = storeService.buildStore("meiren_blockchain_service");
-			BitcoinInput input = new BitcoinInput(result);
+			BlockChainInput input = new BlockChainInput(result);
 			Store store = new Store(input);
 			stores[0] = store;
 			Block block = nextBlock(stores, HashUtils.toBytesAsLittleEndian("0000000000000000000000000000000000000000000000000000000000000000"));
@@ -220,6 +234,9 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			//当前store池有多少待处理的
 			int size = this.storePool.size();
 			log.info("pack "+size+" stores into block!");
+			if(size == 0) {
+				return;
+			}
 			Store[] stores = new Store[size];
 			Iterator<Map.Entry<String, Store>> it = this.storePool.entrySet().iterator();
 			int index = 0;
@@ -308,7 +325,8 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	 */
 	private void handelGetBlockMessageFromPeer(GetBlocksMessage getBlocksMsg, MessageSender sender) {
 		try {
-			if(getBlocksMsg.getHashStop().equals(BitcoinConstants.ZERO_HASH_BYTES)){
+//			log.info(Arrays.equals(getBlocksMsg.getHashStop(), BlockChainConstants.ZERO_HASH_BYTES));
+			if(Arrays.equals(getBlocksMsg.getHashStop(), BlockChainConstants.ZERO_HASH_BYTES)){
 				String blockHash = HashUtils.toHexStringAsLittleEndian(getBlocksMsg.getHashes()[0]);
 				while(true){
 					DiskBlockIndexDO diskBlockIndexDO = diskBlockIndexDAO.findByPrevBlockHash(blockHash);
@@ -421,8 +439,8 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		}
 		if (msg instanceof VersionMessage) {
 			sender.sendMessage(new VerAckMessage());
-			sender.sendMessage(new GetBlocksMessage(HashUtils.toBytesAsLittleEndian(this.lastBlockHash),
-					BitcoinConstants.ZERO_HASH_BYTES));
+//			sender.sendMessage(new GetBlocksMessage(HashUtils.toBytesAsLittleEndian(this.lastBlockHash),
+//					BlockChainConstants.ZERO_HASH_BYTES));
 			return;
 		}
 		if (msg instanceof InvMessage) {

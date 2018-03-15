@@ -4,7 +4,7 @@ import java.io.IOException;
 
 /**
  * Build P2P message:
- * https://en.bitcoin.it/wiki/Protocol_documentation#Message_structure
+ * https://en.BlockChain.it/wiki/Protocol_documentation#Message_structure
  * 
  * @author jijc
  */

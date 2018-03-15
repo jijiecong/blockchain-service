@@ -1,8 +1,8 @@
 package com.meiren.blockchain.p2p.message;
 
 
-import com.meiren.blockchain.common.io.BitcoinInput;
-import com.meiren.blockchain.common.io.BitcoinOutput;
+import com.meiren.blockchain.common.io.BlockChainInput;
+import com.meiren.blockchain.common.io.BlockChainOutput;
 import com.meiren.blockchain.entity.TimestampNetworkAddress;
 
 import java.io.ByteArrayInputStream;
@@ -10,7 +10,7 @@ import java.io.IOException;
 
 /**
  * Build P2P message:
- * https://en.bitcoin.it/wiki/Protocol_documentation#Message_structure
+ * https://en.BlockChain.it/wiki/Protocol_documentation#Message_structure
  * 
  * @author jijc
  */
@@ -25,7 +25,7 @@ public class AddrMessage extends Message {
 
 	public AddrMessage(byte[] payload) throws IOException {
 		super("addr");
-		try (BitcoinInput input = new BitcoinInput(new ByteArrayInputStream(payload))) {
+		try (BlockChainInput input = new BlockChainInput(new ByteArrayInputStream(payload))) {
 			long count = input.readVarInt(); // do not store count
 			this.addr_list = new TimestampNetworkAddress[(int) count];
 			for (int i = 0; i < this.addr_list.length; i++) {
@@ -36,7 +36,7 @@ public class AddrMessage extends Message {
 
 	@Override
 	protected byte[] getPayload() {
-		BitcoinOutput output = new BitcoinOutput();
+		BlockChainOutput output = new BlockChainOutput();
 		output.writeVarInt(this.addr_list.length);
 		for (int i = 0; i < this.addr_list.length; i++) {
 			TimestampNetworkAddress taddr = this.addr_list[i];

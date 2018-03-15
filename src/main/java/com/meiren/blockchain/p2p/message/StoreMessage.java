@@ -1,6 +1,6 @@
 package com.meiren.blockchain.p2p.message;
 
-import com.meiren.blockchain.common.io.BitcoinInput;
+import com.meiren.blockchain.common.io.BlockChainInput;
 import com.meiren.blockchain.entity.Block;
 import com.meiren.blockchain.entity.Store;
 import org.apache.commons.logging.Log;
@@ -11,7 +11,7 @@ import java.io.IOException;
 
 /**
  * Build P2P message:
- * https://en.bitcoin.it/wiki/Protocol_documentation#Message_structure
+ * https://en.BlockChain.it/wiki/Protocol_documentation#Message_structure
  * 
  * @author jijc
  */
@@ -27,7 +27,7 @@ public class StoreMessage extends Message {
 
 	public StoreMessage(byte[] payload) throws IOException {
 		super("store");
-		try (BitcoinInput input = new BitcoinInput(new ByteArrayInputStream(payload))) {
+		try (BlockChainInput input = new BlockChainInput(new ByteArrayInputStream(payload))) {
 			this.store = new Store(input);
 		}
 	}
