@@ -3,17 +3,11 @@ package com.meiren.blockchain.service.Impl;
 
 import com.meiren.blockchain.common.constant.BlockChainConstants;
 import com.meiren.blockchain.common.io.BlockChainInput;
-import com.meiren.blockchain.common.util.BlockChainFileUtils;
-import com.meiren.blockchain.common.util.HashUtils;
-import com.meiren.blockchain.common.util.JsonUtils;
-import com.meiren.blockchain.common.util.LRUCache;
+import com.meiren.blockchain.common.util.*;
 import com.meiren.blockchain.dao.DiskBlockIndexDAO;
 import com.meiren.blockchain.dataobject.DiskBlockIndexDO;
 import com.meiren.blockchain.entity.*;
-import com.meiren.blockchain.p2p.MessageListener;
-import com.meiren.blockchain.p2p.MessageSender;
-import com.meiren.blockchain.p2p.PeerConnectionPool;
-import com.meiren.blockchain.p2p.PeerServer;
+import com.meiren.blockchain.p2p.*;
 import com.meiren.blockchain.p2p.message.*;
 import com.meiren.blockchain.service.BlockIndexService;
 import com.meiren.blockchain.service.BlockService;
@@ -146,6 +140,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		initBlockData();
 		initConnectionPool();
 		initServer();
+
 	}
 
 	private void initServer() throws IOException {
@@ -229,36 +224,38 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	//定义一个按一定频率执行的定时任务，每隔10分钟执行一次，延迟10秒执行
 	@Scheduled(initialDelay =10*1000 , fixedRate = 10*60*1000)
 	public void packStoresIntoBlock() {
-		lock.lock();
-		try {
-			//当前store池有多少待处理的
-			int size = this.storePool.size();
-			log.info("pack "+size+" stores into block!");
-			if(size == 0) {
-				return;
-			}
-			Store[] stores = new Store[size];
-			Iterator<Map.Entry<String, Store>> it = this.storePool.entrySet().iterator();
-			int index = 0;
-			while (it.hasNext()) {
-				Map.Entry<String, Store> entry = it.next();
-//				System.out.println(entry.getKey() + ":" + entry.getValue());
-				stores[index] = entry.getValue();
-//				it.remove(); //删除元素
-				index++;
-				if(index == size){
-					break;
-				}
-			}
-			Block newBlock = nextBlock(stores, HashUtils.toBytesAsLittleEndian(this.lastBlockHash));
-			log.info("pack a new block, blockHash:"+ HashUtils.toHexStringAsLittleEndian(newBlock.getBlockHash()));
+		if(this.masterIp.equals(NetworkUtils.getLocalInetAddress().getHostAddress())){
+			lock.lock();
 			try {
-				this.pool.sendMessage(new NewBlockMessage(newBlock.toByteArray()));
-			} catch (IOException e) {
-				e.printStackTrace();
+				//当前store池有多少待处理的
+				int size = this.storePool.size();
+				log.info("pack "+size+" stores into block!");
+				if(size == 0) {
+					return;
+				}
+				Store[] stores = new Store[size];
+				Iterator<Map.Entry<String, Store>> it = this.storePool.entrySet().iterator();
+				int index = 0;
+				while (it.hasNext()) {
+					Map.Entry<String, Store> entry = it.next();
+					//				System.out.println(entry.getKey() + ":" + entry.getValue());
+					stores[index] = entry.getValue();
+					//				it.remove(); //删除元素
+					index++;
+					if(index == size){
+						break;
+					}
+				}
+				Block newBlock = nextBlock(stores, HashUtils.toBytesAsLittleEndian(this.lastBlockHash));
+				log.info("pack a new block, blockHash:"+ HashUtils.toHexStringAsLittleEndian(newBlock.getBlockHash()));
+				try {
+					this.pool.sendMessage(new NewBlockMessage(newBlock.toByteArray()));
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			} finally {
+				lock.unlock();
 			}
-		} finally {
-			lock.unlock();
 		}
 	}
 
@@ -427,12 +424,34 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		return Boolean.TRUE;
 	}
 
+	public String masterIp = "";
 	/**
 	 * Handle received message from peer.
 	 */
 	@Override
 	public void onMessage(MessageSender sender, Message msg) {
 
+		if(msg instanceof GetMasterIpMessage){
+			sender.sendMessage(new MasterIpMessage(this.masterIp));
+			return;
+		}
+		if(msg instanceof MasterIpMessage){
+			if (!StringUtils.isBlank(this.masterIp) && this.pool.getConnectionMap()
+					.containsKey(this.masterIp)) {
+				sender.sendMessage(new MasterIpMessage(this.masterIp));
+				return;
+			}
+			MasterIpMessage masterIpMessage = (MasterIpMessage) msg;
+			if(StringUtils.isBlank(masterIpMessage.masterIp)){
+				this.masterIp = calMasterIp(this.pool.getConnectionMap());
+				this.pool.sendMessage(new MasterIpMessage(this.masterIp));
+				return;
+			}else if(this.pool.getConnectionMap().containsKey(masterIpMessage.masterIp)){
+				this.masterIp = masterIpMessage.masterIp;
+				sender.sendMessage(new MasterIpMessage(this.masterIp));
+				return;
+			}
+		}
 		if (msg instanceof PingMessage) {
 			sender.sendMessage(new PongMessage(((PingMessage) msg).getNonce()));
 			return;
@@ -486,6 +505,32 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		}
 	}
 
+	private String calMasterIp(Map<String, PeerConnection> connectionMap) {
+		String masterIp = "";
+		for(String key : connectionMap.keySet()){
+			if(key.compareTo(masterIp) > 0){
+				masterIp = key;
+			}
+		}
+		return masterIp;
+	}
 
+	/**
+	 * check the masterIp is available.
+	 */
+	//1.initialDelay :初次执行任务之前需要等待的时间
+	//2.fixedRate:执行频率，每隔多少时间就启动任务，不管该任务是否启动完成
+	@Scheduled(initialDelay = 10_000, fixedRate = 5_000)
+	public void checkMasterIp() {
+		System.out.println("now the masterIp is : "+this.masterIp);
+		if(StringUtils.isBlank(this.masterIp)){
+			this.pool.sendMessage(new GetMasterIpMessage());
+			return;
+		}
+		if(!this.pool.getConnectionMap().containsKey(this.masterIp)){
+			this.pool.sendMessage(new MasterIpMessage(calMasterIp(this.pool.getConnectionMap())));
+		}
+
+	}
 
 }

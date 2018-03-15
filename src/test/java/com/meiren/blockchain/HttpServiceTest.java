@@ -2,6 +2,7 @@ package com.meiren.blockchain;
 
 
 import com.alibaba.fastjson.JSONObject;
+import com.meiren.blockchain.common.util.NetworkUtils;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -233,5 +234,10 @@ public class HttpServiceTest extends BaseServiceTest{
 		} else {
 			System.out.println("登录失败！");
 		}
+	}
+
+	@Test
+	public void getIp (){
+		System.out.println(NetworkUtils.getLocalInetAddress().getHostAddress());
 	}
 }

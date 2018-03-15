@@ -27,21 +27,21 @@ public class PeerManager {
 		this.cached = cachedFile;
 		Peer[] cachedPeers = loadPeers();
 		addPeers(cachedPeers);
-		if (peers.size() == 0) {
-			// lookup from DNS:
-			Thread t = new Thread() {
-				public void run() {
-					try {
-						String[] ips = PeerDiscover.lookup();
-						addPeers(ips);
-					} catch (Exception e) {
-						log.warn("Could not discover peers.", e);
-					}
-				}
-			};
-			t.setDaemon(true);
-			t.start();
-		}
+//		if (peers.size() == 0) {
+//			// lookup from DNS:
+//			Thread t = new Thread() {
+//				public void run() {
+//					try {
+//						String[] ips = PeerDiscover.lookup();
+//						addPeers(ips);
+//					} catch (Exception e) {
+//						log.warn("Could not discover peers.", e);
+//					}
+//				}
+//			};
+//			t.setDaemon(true);
+//			t.start();
+//		}
 	}
 
 	public synchronized int peerCount() {
@@ -108,9 +108,9 @@ public class PeerManager {
 	public synchronized void addPeers(Peer[] ps) {
 		log.info("Add discovered " + ps.length + " peers...");
 		for (Peer p : ps) {
-//			if (!this.peers.contains(p)) {
+			if (!this.peers.contains(p)) {
 				this.peers.add(p);
-//			}
+			}
 		}
 		log.info("Total peers: " + this.peers.size());
 //		storePeers();

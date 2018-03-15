@@ -1,6 +1,9 @@
 package com.meiren.blockchain.p2p;
 
+import com.meiren.blockchain.common.util.NetworkUtils;
+import com.meiren.blockchain.p2p.message.GetMasterIpMessage;
 import com.meiren.blockchain.p2p.message.Message;
+import com.meiren.common.utils.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -23,7 +26,6 @@ public class PeerConnectionPool extends Thread implements PeerListener {
 	final Map<String, PeerConnection> connectionMap = new ConcurrentHashMap<>();
 
 	volatile boolean running;
-
 	public PeerConnectionPool(MessageListener messageListener) {
 		this(messageListener, 3);
 	}
@@ -38,18 +40,29 @@ public class PeerConnectionPool extends Thread implements PeerListener {
 	public void run() {
 		this.running = true;
 		while (this.running) {
-			if (connectionMap.size() < this.poolSize) {
-				log.info("Try open new peer connection...");
-				String ip = this.peerManager.getPeer();
-				if (ip != null) {
-					log.info("Try open new peer connection to " + ip + "...");
-					PeerConnection conn = new PeerConnection(ip, this);
-					connectionMap.put(ip, conn);
+			for(Peer p : this.peerManager.getPeers()){
+				if(p.ip.equals(NetworkUtils.getLocalInetAddress().getHostAddress())){
+					continue;
+				}
+				if (p.ip != null && !connectionMap.containsKey(p.ip)) {
+					log.info("Try open new peer connection to " + p.ip + "...");
+					PeerConnection conn = new PeerConnection(p.ip, this);
+					connectionMap.put(p.ip, conn);
 					conn.start();
-				} else {
-					log.info("No peers found yet.");
 				}
 			}
+//			if (connectionMap.size() < this.poolSize) {
+//				log.info("Try open new peer connection...");
+//				String ip = this.peerManager.getPeer();
+//				if (ip != null) {
+//					log.info("Try open new peer connection to " + ip + "...");
+//					PeerConnection conn = new PeerConnection(ip, this);
+//					connectionMap.put(ip, conn);
+//					conn.start();
+//				} else {
+//					log.info("No peers found yet.");
+//				}
+//			}
 			try {
 				Thread.sleep(5000L);
 			} catch (InterruptedException e) {
@@ -106,5 +119,9 @@ public class PeerConnectionPool extends Thread implements PeerListener {
 		}
 		this.connectionMap.remove(ip);
 		this.peerManager.releasePeer(ip, e == null ? 3 : -1);
+	}
+
+	public Map<String, PeerConnection> getConnectionMap(){
+		return this.connectionMap;
 	}
 }
