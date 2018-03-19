@@ -24,14 +24,20 @@ public class MasterIpMessage extends Message {
 	}
 
 	public MasterIpMessage(byte[] payload) throws IOException {
-		super("addr");
+		super("masterIp");
 		try (BlockChainInput input = new BlockChainInput(new ByteArrayInputStream(payload))) {
+			long count = input.readVarInt();
+			byte[] masterIpBytes = input.readBytes((int) count);
+			this.masterIp = new String(masterIpBytes);
 		}
 	}
 
 	@Override
 	protected byte[] getPayload() {
 		BlockChainOutput output = new BlockChainOutput();
+		byte[] masterIpBytes = this.masterIp.getBytes();
+		output.writeVarInt(masterIpBytes.length);
+		output.write(masterIpBytes);
 		return output.toByteArray();
 	}
 

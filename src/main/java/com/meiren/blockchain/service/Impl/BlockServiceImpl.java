@@ -425,6 +425,8 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	}
 
 	public String masterIp = "";
+
+	public String localhostIp = NetworkUtils.getLocalInetAddress().getHostAddress();
 	/**
 	 * Handle received message from peer.
 	 */
@@ -436,9 +438,9 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			return;
 		}
 		if(msg instanceof MasterIpMessage){
-			if (!StringUtils.isBlank(this.masterIp) && this.pool.getConnectionMap()
-					.containsKey(this.masterIp)) {
-				sender.sendMessage(new MasterIpMessage(this.masterIp));
+			if (!StringUtils.isBlank(this.masterIp) && (this.pool.getConnectionMap()
+					.containsKey(this.masterIp) || localhostIp.equals(this.masterIp))) {
+//				sender.sendMessage(new MasterIpMessage(this.masterIp));
 				return;
 			}
 			MasterIpMessage masterIpMessage = (MasterIpMessage) msg;
@@ -446,7 +448,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				this.masterIp = calMasterIp(this.pool.getConnectionMap());
 				this.pool.sendMessage(new MasterIpMessage(this.masterIp));
 				return;
-			}else if(this.pool.getConnectionMap().containsKey(masterIpMessage.masterIp)){
+			}else if(this.pool.getConnectionMap().containsKey(masterIpMessage.masterIp) || masterIpMessage.masterIp.equals(this.localhostIp)){
 				this.masterIp = masterIpMessage.masterIp;
 				sender.sendMessage(new MasterIpMessage(this.masterIp));
 				return;
@@ -506,15 +508,16 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	}
 
 	private String calMasterIp(Map<String, PeerConnection> connectionMap) {
-		String masterIp = "";
+		String masterIp = this.localhostIp;
 		for(String key : connectionMap.keySet()){
-			if(key.compareTo(masterIp) > 0){
+			if(key.compareTo(masterIp) < 0){
 				masterIp = key;
 			}
 		}
 		return masterIp;
 	}
 
+	private int noMasterIpCount = 0;
 	/**
 	 * check the masterIp is available.
 	 */
@@ -523,14 +526,27 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	@Scheduled(initialDelay = 10_000, fixedRate = 5_000)
 	public void checkMasterIp() {
 		System.out.println("now the masterIp is : "+this.masterIp);
+//		if(this.pool.getConnectionMap().size() == 0 && count ==0){
+//			this.masterIp = this.localhostIp;
+//		}
+//		if(this.pool.getConnectionMap().size() == 0 && count >0){
+//			this.masterIp="";
+//		}
 		if(StringUtils.isBlank(this.masterIp)){
+			noMasterIpCount++;
+			if(noMasterIpCount >= 5){
+				System.exit(1);
+			}
 			this.pool.sendMessage(new GetMasterIpMessage());
 			return;
+		}else {
+			noMasterIpCount = 0;
 		}
-		if(!this.pool.getConnectionMap().containsKey(this.masterIp)){
-			this.pool.sendMessage(new MasterIpMessage(calMasterIp(this.pool.getConnectionMap())));
+		if(!this.pool.getConnectionMap().containsKey(this.masterIp) && !this.localhostIp.equals(this.masterIp)){
+//			this.pool.sendMessage(new MasterIpMessage(calMasterIp(this.pool.getConnectionMap())));
+			this.masterIp = "";
+			this.pool.sendMessage(new GetMasterIpMessage());
 		}
-
 	}
 
 }

@@ -118,7 +118,7 @@ public class PeerConnectionPool extends Thread implements PeerListener {
 			log.warn("Peer " + ip + " disconnected with error.", e);
 		}
 		this.connectionMap.remove(ip);
-		this.peerManager.releasePeer(ip, e == null ? 3 : -1);
+//		this.peerManager.releasePeer(ip, e == null ? 3 : -1);
 	}
 
 	public Map<String, PeerConnection> getConnectionMap(){

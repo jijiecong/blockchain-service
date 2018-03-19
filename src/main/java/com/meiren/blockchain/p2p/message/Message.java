@@ -97,7 +97,7 @@ public abstract class Message {
 			map.put("version", VersionMessage.class);
 			map.put("store", StoreMessage.class);
 			map.put("getMasterIp", GetMasterIpMessage.class);
-			map.put("masterIp", GetMasterIpMessage.class);
+			map.put("masterIp", MasterIpMessage.class);
 			return map;
 		}
 
