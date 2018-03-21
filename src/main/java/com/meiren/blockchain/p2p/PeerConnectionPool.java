@@ -24,6 +24,7 @@ public class PeerConnectionPool extends Thread implements PeerListener {
 	final int poolSize;
 	final MessageListener messageListener;
 	final Map<String, PeerConnection> connectionMap = new ConcurrentHashMap<>();
+	final String localhost = "192.168.4.223";
 
 	volatile boolean running;
 	public PeerConnectionPool(MessageListener messageListener) {
@@ -41,7 +42,7 @@ public class PeerConnectionPool extends Thread implements PeerListener {
 		this.running = true;
 		while (this.running) {
 			for(Peer p : this.peerManager.getPeers()){
-				if(p.ip.equals(NetworkUtils.getLocalInetAddress().getHostAddress())){
+				if(p.ip.equals(localhost)){
 					continue;
 				}
 				if (p.ip != null && !connectionMap.containsKey(p.ip)) {

@@ -53,7 +53,7 @@ public class PeerConnection extends Thread implements MessageSender {
 					listener.connected(this.nodeIp);
 					setTimeout(60_000);
 					// add version message to send automatically:
-//					this.sendMessage(new VersionMessage(0, sock.getInetAddress()));
+					this.sendMessage(new VersionMessage(0, sock.getInetAddress()));
 					// loop:
 					while (this.running) {
 						if (isTimeout()) {

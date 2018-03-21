@@ -1,5 +1,6 @@
 package com.meiren.blockchain;
 
+import com.meiren.blockchain.service.BlockIndexService;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -8,6 +9,7 @@ import org.apache.curator.framework.recipes.leader.LeaderSelectorListener;
 import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.utils.CloseableUtils;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +20,8 @@ import java.util.List;
  * @Description: ${todo}
  * @date 2018/3/19 11:25
  */
-public class LeaderShipTest {
+public class LeaderShipTest extends BaseServiceTest{
+
 	private static final String PATH = "/blockChain/leader";
 
 	public static void main(String[] args) {
@@ -27,9 +30,11 @@ public class LeaderShipTest {
 		List<CuratorFramework> clients = new ArrayList<>();
 		List<String> ips = new ArrayList<>();
 		ips.add("192.168.4.223");
-		ips.add("192.168.4.166");
+//		ips.add("192.168.4.166");
+		String ip = "192.168.4.223";
 		try {
-			for (String ip : ips) {
+
+//			for (String ip : ips) {
 				CuratorFramework client = getClient(ip);
 				clients.add(client);
 
@@ -39,7 +44,7 @@ public class LeaderShipTest {
 					public void takeLeadership(CuratorFramework client) throws Exception {
 //						client.getZookeeperClient();
 						System.out.println(name + ":I am leader.");
-						Thread.sleep(2000);
+						Thread.sleep(10000);
 					}
 
 					@Override
@@ -52,7 +57,7 @@ public class LeaderShipTest {
 				leaderSelector.start();
 				selectors.add(leaderSelector);
 
-			}
+//			}
 			Thread.sleep(Integer.MAX_VALUE);
 		} catch (Exception e) {
 			e.printStackTrace();

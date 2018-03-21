@@ -98,6 +98,7 @@ public abstract class Message {
 			map.put("store", StoreMessage.class);
 			map.put("getMasterIp", GetMasterIpMessage.class);
 			map.put("masterIp", MasterIpMessage.class);
+			map.put("checkBlock", CheckBlockMessage.class);
 			return map;
 		}
 

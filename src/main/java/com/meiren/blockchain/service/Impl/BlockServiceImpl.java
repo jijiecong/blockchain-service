@@ -16,6 +16,14 @@ import com.meiren.blockchain.service.StoreService;
 import com.meiren.common.utils.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.curator.RetryPolicy;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.framework.recipes.leader.LeaderSelector;
+import org.apache.curator.framework.recipes.leader.LeaderSelectorListener;
+import org.apache.curator.framework.state.ConnectionState;
+import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.curator.utils.CloseableUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 
@@ -139,6 +147,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	public void init() throws IOException {
 		initBlockData();
 		initConnectionPool();
+		leader();
 		initServer();
 
 	}
@@ -192,8 +201,8 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		this.lastBlockHash = HashUtils.toHexStringAsLittleEndian(last.getBlockHash());
 		log.info("Last block: " + this.lastBlockHash + " created at "
 				+ Instant.ofEpochSecond(last.header.timestamp).atZone(ZoneId.systemDefault()).toString());
-		long n = (Instant.now().getEpochSecond() - last.header.timestamp) / 600;
-		log.info("Needs to synchronize about " + n + " blocks...");
+//		long n = (Instant.now().getEpochSecond() - last.header.timestamp) / 600;
+//		log.info("Needs to synchronize about " + n + " blocks...");
 	}
 
 	private void initConnectionPool() {
@@ -222,16 +231,16 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	}
 
 	//定义一个按一定频率执行的定时任务，每隔10分钟执行一次，延迟10秒执行
-	@Scheduled(initialDelay =10*1000 , fixedRate = 10*60*1000)
-	public void packStoresIntoBlock() {
-		if(this.masterIp.equals(NetworkUtils.getLocalInetAddress().getHostAddress())){
+//	@Scheduled(initialDelay =10*1000 , fixedRate = 10*60*1000)
+	public Block packStoresIntoBlock() {
+//		if(this.masterIp.equals(NetworkUtils.getLocalInetAddress().getHostAddress())){
 			lock.lock();
 			try {
 				//当前store池有多少待处理的
 				int size = this.storePool.size();
 				log.info("pack "+size+" stores into block!");
 				if(size == 0) {
-					return;
+					return null;
 				}
 				Store[] stores = new Store[size];
 				Iterator<Map.Entry<String, Store>> it = this.storePool.entrySet().iterator();
@@ -253,10 +262,11 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
+				return newBlock;
 			} finally {
 				lock.unlock();
 			}
-		}
+//		}
 	}
 
 	/**
@@ -289,6 +299,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				this.deque.offerLast(next);
 				lastHash = HashUtils.toHexStringAsLittleEndian(next.getBlockHash());
 			}
+			removeStore(block);
 			return true;
 		} finally {
 			lock.unlock();
@@ -424,6 +435,16 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		return Boolean.TRUE;
 	}
 
+	/**
+	 * remove store from storesPool
+	 */
+	public boolean removeStore(Block block){
+		for(Store store :block.stores){
+			this.storePool.remove(HashUtils.toHexStringAsLittleEndian(store.getStoreHash()));
+		}
+		return true;
+	}
+
 	public String masterIp = "";
 
 	public String localhostIp = NetworkUtils.getLocalInetAddress().getHostAddress();
@@ -433,27 +454,27 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	@Override
 	public void onMessage(MessageSender sender, Message msg) {
 
-		if(msg instanceof GetMasterIpMessage){
-			sender.sendMessage(new MasterIpMessage(this.masterIp));
-			return;
-		}
-		if(msg instanceof MasterIpMessage){
-			if (!StringUtils.isBlank(this.masterIp) && (this.pool.getConnectionMap()
-					.containsKey(this.masterIp) || localhostIp.equals(this.masterIp))) {
+//		if(msg instanceof GetMasterIpMessage){
+//			sender.sendMessage(new MasterIpMessage(this.masterIp));
+//			return;
+//		}
+//		if(msg instanceof MasterIpMessage){
+//			if (!StringUtils.isBlank(this.masterIp) && (this.pool.getConnectionMap()
+//					.containsKey(this.masterIp) || localhostIp.equals(this.masterIp))) {
+////				sender.sendMessage(new MasterIpMessage(this.masterIp));
+//				return;
+//			}
+//			MasterIpMessage masterIpMessage = (MasterIpMessage) msg;
+//			if(StringUtils.isBlank(masterIpMessage.masterIp)){
+//				this.masterIp = calMasterIp(this.pool.getConnectionMap());
+//				this.pool.sendMessage(new MasterIpMessage(this.masterIp));
+//				return;
+//			}else if(this.pool.getConnectionMap().containsKey(masterIpMessage.masterIp) || masterIpMessage.masterIp.equals(this.localhostIp)){
+//				this.masterIp = masterIpMessage.masterIp;
 //				sender.sendMessage(new MasterIpMessage(this.masterIp));
-				return;
-			}
-			MasterIpMessage masterIpMessage = (MasterIpMessage) msg;
-			if(StringUtils.isBlank(masterIpMessage.masterIp)){
-				this.masterIp = calMasterIp(this.pool.getConnectionMap());
-				this.pool.sendMessage(new MasterIpMessage(this.masterIp));
-				return;
-			}else if(this.pool.getConnectionMap().containsKey(masterIpMessage.masterIp) || masterIpMessage.masterIp.equals(this.localhostIp)){
-				this.masterIp = masterIpMessage.masterIp;
-				sender.sendMessage(new MasterIpMessage(this.masterIp));
-				return;
-			}
-		}
+//				return;
+//			}
+//		}
 		if (msg instanceof PingMessage) {
 			sender.sendMessage(new PongMessage(((PingMessage) msg).getNonce()));
 			return;
@@ -501,52 +522,155 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			NewBlockMessage newBlockMsg = (NewBlockMessage) msg;
 			log.info("Get block data: " + HashUtils.toHexStringAsLittleEndian(newBlockMsg.block.getBlockHash()));
 			if(newBlockMsg.validateHash()){
-				processBlockFromPeer(newBlockMsg.block);
-				this.pool.sendMessage(newBlockMsg);
+//				processBlockFromPeer(newBlockMsg.block);
+//				this.pool.sendMessage(newBlockMsg);
+				if(this.lastBlockHash.equals(HashUtils.toHexStringAsLittleEndian(newBlockMsg.block.header.prevHash))){
+					sender.sendMessage(new CheckBlockMessage("success"));
+				}else {
+					sender.sendMessage(new CheckBlockMessage("failed"));
+				}
+			}
+		}
+		if (msg instanceof CheckBlockMessage) {
+			CheckBlockMessage checkBlockMsg = (CheckBlockMessage) msg;
+			log.info("Get checkBlock data, result: " + checkBlockMsg.result);
+			if(checkBlockMsg.result.equals("success")){
+				this.countSure++;
+			}
+			this.countAllConn++;
+			if(countAllConn == this.pool.getConnectionMap().size()){
+				this.countAllConn = 0;
+				this.waitCheckBlock = false;
 			}
 		}
 	}
 
-	private String calMasterIp(Map<String, PeerConnection> connectionMap) {
-		String masterIp = this.localhostIp;
-		for(String key : connectionMap.keySet()){
-			if(key.compareTo(masterIp) < 0){
-				masterIp = key;
-			}
-		}
-		return masterIp;
-	}
+//	private String calMasterIp(Map<String, PeerConnection> connectionMap) {
+//		String masterIp = this.localhostIp;
+//		for(String key : connectionMap.keySet()){
+//			if(key.compareTo(masterIp) < 0){
+//				masterIp = key;
+//			}
+//		}
+//		return masterIp;
+//	}
+//
+//	private int noMasterIpCount = 0;
+//	/**
+//	 * check the masterIp is available.
+//	 */
+//	//1.initialDelay :初次执行任务之前需要等待的时间
+//	//2.fixedRate:执行频率，每隔多少时间就启动任务，不管该任务是否启动完成
+//	@Scheduled(initialDelay = 10_000, fixedRate = 5_000)
+//	public void checkMasterIp() {
+//		System.out.println("now the masterIp is : "+this.masterIp);
+////		if(this.pool.getConnectionMap().size() == 0 && count ==0){
+////			this.masterIp = this.localhostIp;
+////		}
+////		if(this.pool.getConnectionMap().size() == 0 && count >0){
+////			this.masterIp="";
+////		}
+//		if(StringUtils.isBlank(this.masterIp)){
+//			noMasterIpCount++;
+//			if(noMasterIpCount >= 5){
+//				System.exit(1);
+//			}
+//			this.pool.sendMessage(new GetMasterIpMessage());
+//			return;
+//		}else {
+//			noMasterIpCount = 0;
+//		}
+//		if(!this.pool.getConnectionMap().containsKey(this.masterIp) && !this.localhostIp.equals(this.masterIp)){
+////			this.pool.sendMessage(new MasterIpMessage(calMasterIp(this.pool.getConnectionMap())));
+//			this.masterIp = "";
+//			this.pool.sendMessage(new GetMasterIpMessage());
+//		}
+//	}
 
-	private int noMasterIpCount = 0;
+	private static final String PATH = "/blockChain/leader";
+	private boolean waitGetLastest = true;
+	private boolean isLastest = false;
+	private boolean waitCheckBlock = true;
+	private int countSure = 0;
+	private int countAllConn = 0;
 	/**
-	 * check the masterIp is available.
-	 */
-	//1.initialDelay :初次执行任务之前需要等待的时间
-	//2.fixedRate:执行频率，每隔多少时间就启动任务，不管该任务是否启动完成
-	@Scheduled(initialDelay = 10_000, fixedRate = 5_000)
-	public void checkMasterIp() {
-		System.out.println("now the masterIp is : "+this.masterIp);
-//		if(this.pool.getConnectionMap().size() == 0 && count ==0){
-//			this.masterIp = this.localhostIp;
-//		}
-//		if(this.pool.getConnectionMap().size() == 0 && count >0){
-//			this.masterIp="";
-//		}
-		if(StringUtils.isBlank(this.masterIp)){
-			noMasterIpCount++;
-			if(noMasterIpCount >= 5){
-				System.exit(1);
+	 * leader节点生成block
+	 * */
+	public void leader(){
+		List<LeaderSelector> selectors = new ArrayList<>();
+		List<CuratorFramework> clients = new ArrayList<>();
+		List<String> ips = new ArrayList<>();
+		ips.add("192.168.4.223");
+		//		ips.add("192.168.4.166");
+		String ip = "192.168.4.223";
+		try {
+
+			//			for (String ip : ips) {
+			CuratorFramework client = getClient(ip);
+			clients.add(client);
+
+			final String name = "client#" + ip;
+			LeaderSelector leaderSelector = new LeaderSelector(client, PATH, new LeaderSelectorListener() {
+				@Override
+				public void takeLeadership(CuratorFramework client) throws Exception {
+					System.out.println(name + ":I am leader.");
+
+					//						client.getZookeeperClient();
+//					waitGetLastest = true;
+//					pool.sendMessage(new GetBlocksMessage(HashUtils.toBytesAsLittleEndian(lastBlockHash),
+//												BlockChainConstants.ZERO_HASH_BYTES));
+//					while (waitGetLastest){//阻塞，直到等到其他节点返回
+//					}
+//					if(!isLastest){
+//						return;
+//					}
+					waitCheckBlock = true;
+					Block block = packStoresIntoBlock();
+					if(block == null){
+						return;
+					}
+					while (waitCheckBlock){}//阻塞，直到其他节点返回结果
+					if (countSure >= pool.getConnectionMap().size()/2){
+						countSure = 0;
+						pool.sendMessage(new BlockMessage(block.toByteArray()));
+						processNextBlock(block);
+						removeStore(block);
+					}
+					Thread.sleep(10000);
+				}
+
+				@Override
+				public void stateChanged(CuratorFramework client, ConnectionState newState) {
+
+				}
+			});
+
+			leaderSelector.autoRequeue();
+			leaderSelector.start();
+			selectors.add(leaderSelector);
+
+			//			}
+			Thread.sleep(Integer.MAX_VALUE);
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			for(CuratorFramework client : clients){
+				CloseableUtils.closeQuietly(client);
 			}
-			this.pool.sendMessage(new GetMasterIpMessage());
-			return;
-		}else {
-			noMasterIpCount = 0;
-		}
-		if(!this.pool.getConnectionMap().containsKey(this.masterIp) && !this.localhostIp.equals(this.masterIp)){
-//			this.pool.sendMessage(new MasterIpMessage(calMasterIp(this.pool.getConnectionMap())));
-			this.masterIp = "";
-			this.pool.sendMessage(new GetMasterIpMessage());
+
+			for(LeaderSelector selector : selectors){
+				CloseableUtils.closeQuietly(selector);
+			}
+
 		}
 	}
 
+	private static CuratorFramework getClient(String ip) {
+		RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
+		CuratorFramework client = CuratorFrameworkFactory.builder().connectString(ip + ":2181")
+				.retryPolicy(retryPolicy).sessionTimeoutMs(6000).connectionTimeoutMs(3000)
+				.namespace("blockChain").build();
+		client.start();
+		return client;
+	}
 }
