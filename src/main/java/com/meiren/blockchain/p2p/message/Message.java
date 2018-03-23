@@ -99,6 +99,7 @@ public abstract class Message {
 			map.put("getMasterIp", GetMasterIpMessage.class);
 			map.put("masterIp", MasterIpMessage.class);
 			map.put("checkBlock", CheckBlockMessage.class);
+			map.put("newBlock", NewBlockMessage.class);
 			return map;
 		}
 

@@ -4,6 +4,8 @@ import com.meiren.blockchain.common.constant.BlockChainConstants;
 import com.meiren.blockchain.common.io.BlockChainOutput;
 import com.meiren.blockchain.service.StoreService;
 
+import java.time.Instant;
+
 /**
  * @author jijiecong
  * @ClassName: StoreServiceImpl
@@ -27,7 +29,7 @@ public class StoreServiceImpl implements StoreService {
 		// storeScript
 		output.write(storeScript);
 		// lock time:
-		output.writeInt(0);
+		output.writeUnsignedInt(Instant.now().getEpochSecond());
 		return output.toByteArray();
 	}
 

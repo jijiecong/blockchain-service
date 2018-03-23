@@ -56,10 +56,10 @@ public class PeerConnection extends Thread implements MessageSender {
 					this.sendMessage(new VersionMessage(0, sock.getInetAddress()));
 					// loop:
 					while (this.running) {
-						if (isTimeout()) {
-							log.info("Timeout!");
-							break;
-						}
+//						if (isTimeout()) {
+//							log.info("Timeout!");
+//							break;
+//						}
 						// try get message to send:
 						Message msg = sendingQueue.poll(1, TimeUnit.SECONDS);
 						if (this.running && msg != null) {

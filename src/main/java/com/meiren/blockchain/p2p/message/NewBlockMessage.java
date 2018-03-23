@@ -22,11 +22,11 @@ public class NewBlockMessage extends Message {
 	public Block block;
 
 	public NewBlockMessage() {
-		super("block");
+		super("newBlock");
 	}
 
 	public NewBlockMessage(byte[] payload) throws IOException {
-		super("block");
+		super("newBlock");
 		try (BlockChainInput input = new BlockChainInput(new ByteArrayInputStream(payload))) {
 			this.block = new Block(input);
 		}
@@ -52,7 +52,7 @@ public class NewBlockMessage extends Message {
 
 	@Override
 	public String toString() {
-		return "BlockMessage(txnCount=" + this.block.stores.length + ")";
+		return "NewBlockMessage(txnCount=" + this.block.stores.length + ")";
 	}
 
 }

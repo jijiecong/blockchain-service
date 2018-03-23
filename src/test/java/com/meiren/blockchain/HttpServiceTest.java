@@ -2,7 +2,9 @@ package com.meiren.blockchain;
 
 
 import com.alibaba.fastjson.JSONObject;
+import com.meiren.blockchain.common.util.JsonUtils;
 import com.meiren.blockchain.common.util.NetworkUtils;
+import com.meiren.blockchain.entity.Header;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -26,6 +28,8 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -239,5 +243,14 @@ public class HttpServiceTest extends BaseServiceTest{
 	@Test
 	public void getIp (){
 		System.out.println(NetworkUtils.getLocalInetAddress().getHostAddress());
+		System.out.println(System.currentTimeMillis());
+		System.out.println(Instant.now().getEpochSecond());
+		long a = System.currentTimeMillis();
+		long b = Instant.now().getEpochSecond();
+		System.out.println(Instant.ofEpochSecond(a).atZone(ZoneId.of("Z")).toString());
+		System.out.println(Instant.ofEpochSecond(b).atZone(ZoneId.of("Z")).toString());
+		Header header = new Header();
+		header.timestamp = b;
+		JsonUtils.printJson(header);
 	}
 }

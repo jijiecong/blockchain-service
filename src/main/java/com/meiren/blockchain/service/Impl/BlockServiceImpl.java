@@ -95,7 +95,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		Block block = new Block();
 		block.stores = stores;
 		int version = 1;
-		long timestamp = System.currentTimeMillis();
+		long timestamp = Instant.now().getEpochSecond();
 		byte[] merkleHash = block.calculateMerkleHash();
 		long nbits = getNbits();
 		long nNonceFound = scanHash_CrypToPP();
@@ -145,20 +145,29 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	}
 
 	public void init() throws IOException {
+		for(int i=1;i<3;i++){
+			StoreService storeService = new StoreServiceImpl();
+			byte[] result = storeService.buildStore("http://meiren.pic.2"+i+".jpg");
+			JsonUtils.printJson(result);
+			BlockChainInput input = new BlockChainInput(result);
+			Store store = new Store(input);
+			this.storePool.put(HashUtils.toHexStringAsLittleEndian(store.getStoreHash()), store);
+		}
+
 		initBlockData();
 		initConnectionPool();
 		leader();
-		initServer();
+//		initServer();
 
 	}
 
 	private void initServer() throws IOException {
 		ServerSocket serverSocket = new ServerSocket(BlockChainConstants.PORT);
 		log.info("等待其他节点连接...");
-		while(true){
+//		while(true){
 			this.server = new PeerServer(serverSocket, this);
 			server.start();
-		}
+//		}
 	}
 
 	public void destroy() {
@@ -230,6 +239,23 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		}
 	}
 
+	/**
+	 * check local blockChain is lastest and synchronizeBlockChain from peers.
+	 */
+	//1.initialDelay :初次执行任务之前需要等待的时间
+	//2.fixedRate:执行频率，每隔多少时间就启动任务，不管该任务是否启动完成
+	@Scheduled(initialDelay = 10_000, fixedRate = 10_000)
+	public void synchronizeBlockChain() {
+		lock.lock();
+		log.info("send getBlockMessage to synchronize local blockChain begin...");
+		try {
+			this.pool.sendMessage(new GetBlocksMessage(HashUtils.toBytesAsLittleEndian(this.lastBlockHash),
+										BlockChainConstants.ZERO_HASH_BYTES));
+		} finally {
+			lock.unlock();
+		}
+	}
+
 	//定义一个按一定频率执行的定时任务，每隔10分钟执行一次，延迟10秒执行
 //	@Scheduled(initialDelay =10*1000 , fixedRate = 10*60*1000)
 	public Block packStoresIntoBlock() {
@@ -242,7 +268,8 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				if(size == 0) {
 					return null;
 				}
-				Store[] stores = new Store[size];
+				int size1 =1;
+				Store[] stores = new Store[size1];
 				Iterator<Map.Entry<String, Store>> it = this.storePool.entrySet().iterator();
 				int index = 0;
 				while (it.hasNext()) {
@@ -250,8 +277,9 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 					//				System.out.println(entry.getKey() + ":" + entry.getValue());
 					stores[index] = entry.getValue();
 					//				it.remove(); //删除元素
+
 					index++;
-					if(index == size){
+					if(index == size1){
 						break;
 					}
 				}
@@ -479,6 +507,11 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			sender.sendMessage(new PongMessage(((PingMessage) msg).getNonce()));
 			return;
 		}
+		if (msg instanceof VerAckMessage) {
+			//			sender.sendMessage(new GetBlocksMessage(HashUtils.toBytesAsLittleEndian(this.lastBlockHash),
+			//					BlockChainConstants.ZERO_HASH_BYTES));
+			return;
+		}
 		if (msg instanceof VersionMessage) {
 			sender.sendMessage(new VerAckMessage());
 //			sender.sendMessage(new GetBlocksMessage(HashUtils.toBytesAsLittleEndian(this.lastBlockHash),
@@ -590,13 +623,14 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	private static final String PATH = "/blockChain/leader";
 	private boolean waitGetLastest = true;
 	private boolean isLastest = false;
-	private boolean waitCheckBlock = true;
-	private int countSure = 0;
-	private int countAllConn = 0;
+	private volatile boolean waitCheckBlock = true;
+	private volatile int countSure = 0;
+	private volatile int countAllConn = 0;
 	/**
 	 * leader节点生成block
 	 * */
 	public void leader(){
+
 		List<LeaderSelector> selectors = new ArrayList<>();
 		List<CuratorFramework> clients = new ArrayList<>();
 		List<String> ips = new ArrayList<>();
@@ -604,6 +638,8 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		//		ips.add("192.168.4.166");
 		String ip = "192.168.4.223";
 		try {
+			initServer();
+			Thread.sleep(3000);
 
 			//			for (String ip : ips) {
 			CuratorFramework client = getClient(ip);
@@ -614,7 +650,6 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				@Override
 				public void takeLeadership(CuratorFramework client) throws Exception {
 					System.out.println(name + ":I am leader.");
-
 					//						client.getZookeeperClient();
 //					waitGetLastest = true;
 //					pool.sendMessage(new GetBlocksMessage(HashUtils.toBytesAsLittleEndian(lastBlockHash),
@@ -627,14 +662,25 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 					waitCheckBlock = true;
 					Block block = packStoresIntoBlock();
 					if(block == null){
+						Thread.sleep(10000);
 						return;
 					}
-					while (waitCheckBlock){}//阻塞，直到其他节点返回结果
+//					System.out.println(waitCheckBlock+ "============"+countSure);
+					//睡一段时间，否则出现waitCheckBlock或者countSure获取不到最新值，用volatile关键字修饰
+//					Thread.sleep(3000);
+//					System.out.println(waitCheckBlock+ "============"+countSure);
+					while (waitCheckBlock){
+					}//阻塞，直到其他节点返回结果
+					System.out.println("go on ........countSure:"+countSure);
 					if (countSure >= pool.getConnectionMap().size()/2){
 						countSure = 0;
 						pool.sendMessage(new BlockMessage(block.toByteArray()));
+
 						processNextBlock(block);
 						removeStore(block);
+						/**
+						 * 这里可以处理保存每个图片对应的blockHash和在block对应的index，用于查询
+						 * */
 					}
 					Thread.sleep(10000);
 				}
