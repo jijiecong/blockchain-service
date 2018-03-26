@@ -63,7 +63,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	/**
 	 * StoreMessage objects.
 	 */
-	private Map<String, Store> storePool = new LinkedHashMap<>();
+	private volatile Map<String, Store> storePool = new LinkedHashMap<>();
 
 	/**
 	 * Cached Block data that cannot process now. key=prevHash
@@ -145,14 +145,14 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	}
 
 	public void init() throws IOException {
-		for(int i=1;i<3;i++){
-			StoreService storeService = new StoreServiceImpl();
-			byte[] result = storeService.buildStore("http://meiren.pic.2"+i+".jpg");
-			JsonUtils.printJson(result);
-			BlockChainInput input = new BlockChainInput(result);
-			Store store = new Store(input);
-			this.storePool.put(HashUtils.toHexStringAsLittleEndian(store.getStoreHash()), store);
-		}
+//		for(int i=1;i<3;i++){
+//			StoreService storeService = new StoreServiceImpl();
+//			byte[] result = storeService.buildStore("http://meiren.pic.2"+i+".jpg");
+//			JsonUtils.printJson(result);
+//			BlockChainInput input = new BlockChainInput(result);
+//			Store store = new Store(input);
+//			this.storePool.put(HashUtils.toHexStringAsLittleEndian(store.getStoreHash()), store);
+//		}
 
 		initBlockData();
 		initConnectionPool();
@@ -239,6 +239,24 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		}
 	}
 
+	@Scheduled(initialDelay = 10_000, fixedRate = 1_000)
+	public void processStore() {
+		lock.lock();
+		try {
+			StoreService storeService = new StoreServiceImpl();
+			byte[] result = storeService.buildStore("http://meiren.pic."+System.currentTimeMillis()+".jpg");
+			JsonUtils.printJson(result);
+			BlockChainInput input = new BlockChainInput(result);
+			Store store = new Store(input);
+			this.pool.sendMessage(new StoreMessage(store.toByteArray()));
+			this.storePool.put(HashUtils.toHexStringAsLittleEndian(store.getStoreHash()), store);
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			lock.unlock();
+		}
+	}
+
 	/**
 	 * check local blockChain is lastest and synchronizeBlockChain from peers.
 	 */
@@ -268,8 +286,8 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				if(size == 0) {
 					return null;
 				}
-				int size1 =1;
-				Store[] stores = new Store[size1];
+//				int size1 =1;
+				Store[] stores = new Store[size];
 				Iterator<Map.Entry<String, Store>> it = this.storePool.entrySet().iterator();
 				int index = 0;
 				while (it.hasNext()) {
@@ -279,7 +297,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 					//				it.remove(); //删除元素
 
 					index++;
-					if(index == size1){
+					if(index == size){
 						break;
 					}
 				}
@@ -312,6 +330,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				log.info("block " + hash + " was already processed.");
 				return false;
 			}
+//			this.deque.contains(block);
 			// add to cache first:
 			String prevHash = HashUtils.toHexStringAsLittleEndian(block.header.prevHash);
 			cache.put(prevHash, block);
@@ -567,18 +586,22 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		if (msg instanceof CheckBlockMessage) {
 			CheckBlockMessage checkBlockMsg = (CheckBlockMessage) msg;
 			log.info("Get checkBlock data, result: " + checkBlockMsg.result);
-			if(checkBlockMsg.result.equals("success")){
-				this.countSure++;
-			}
-			this.countAllConn++;
-			if(countAllConn == this.pool.getConnectionMap().size()){
-				this.countAllConn = 0;
-				this.waitCheckBlock = false;
-			}
+			handleCheckBlockMessage(checkBlockMsg);
 		}
 	}
 
-//	private String calMasterIp(Map<String, PeerConnection> connectionMap) {
+	private synchronized void handleCheckBlockMessage(CheckBlockMessage checkBlockMsg) {
+		if(checkBlockMsg.result.equals("success")){
+			this.countSure++;
+		}
+		this.countAllConn++;
+		if(countAllConn == this.pool.getConnectionMap().size()){
+			this.countAllConn = 0;
+			this.waitCheckBlock = false;
+		}
+	}
+
+	//	private String calMasterIp(Map<String, PeerConnection> connectionMap) {
 //		String masterIp = this.localhostIp;
 //		for(String key : connectionMap.keySet()){
 //			if(key.compareTo(masterIp) < 0){
@@ -672,7 +695,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 					while (waitCheckBlock){
 					}//阻塞，直到其他节点返回结果
 					System.out.println("go on ........countSure:"+countSure);
-					if (countSure >= pool.getConnectionMap().size()/2){
+					if (countSure >= (pool.getConnectionMap().size()/2 + 1)){
 						countSure = 0;
 						pool.sendMessage(new BlockMessage(block.toByteArray()));
 

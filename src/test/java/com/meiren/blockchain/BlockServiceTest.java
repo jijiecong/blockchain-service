@@ -85,7 +85,7 @@ public class BlockServiceTest extends BaseServiceTest{
 	}
 	@Test
 	public void test2(){
-		Block block = blockService.readFromDisk(16);
+		Block block = blockService.readFromDisk(38);
 		System.out.println(new String(block.stores[0].storeScript));
 	}
 
