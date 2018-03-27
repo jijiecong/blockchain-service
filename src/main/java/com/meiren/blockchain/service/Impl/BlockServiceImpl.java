@@ -196,12 +196,15 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 //				processNextBlock(gb);
 //			}
 
-			Store[] stores = new Store[1];
-			byte[] result = storeService.buildStore("meiren_blockchain_service");
-			BlockChainInput input = new BlockChainInput(result);
-			Store store = new Store(input);
-			stores[0] = store;
-			Block block = nextBlock(stores, HashUtils.toBytesAsLittleEndian("0000000000000000000000000000000000000000000000000000000000000000"));
+//			Store[] stores = new Store[1];
+//			byte[] result = storeService.buildStore("meiren_blockchain_service");
+//			BlockChainInput input = new BlockChainInput(result);
+//			Store store = new Store(input);
+//			stores[0] = store;
+//			Block block = nextBlock(stores, HashUtils.toBytesAsLittleEndian("0000000000000000000000000000000000000000000000000000000000000000"));
+//			HashUtils.toHexStringAsLittleEndian(block.toByteArray());
+			BlockChainInput input = new BlockChainInput(BlockChainConstants.GENESIS_BLOCK_DATA);
+			Block block = new Block(input);
 			processNextBlock(block);
 			nFile = 1;
 		}
@@ -239,7 +242,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		}
 	}
 
-	@Scheduled(initialDelay = 10_000, fixedRate = 1_000)
+	@Scheduled(initialDelay = 10_000, fixedRate = 3_000)
 	public void processStore() {
 		lock.lock();
 		try {

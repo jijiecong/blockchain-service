@@ -29,13 +29,7 @@ public class StoreServiceTest {
 	}
 
 	public static void main(String[] args){
-		Scanner sb = new Scanner(System.in);
-		System.out.print("输入你的姓名：");
-		String name = sb.nextLine();
-		System.out.print("输入你的年龄：");
-		int age = sb.nextInt();
-		System.out.println("姓名：" + name + "  年龄：" + age );
-		sb.close();         //若没有关闭Scanner对象将会出现警告
+
 	}
 
 }

@@ -3,6 +3,7 @@ package com.meiren.blockchain;
 import com.meiren.blockchain.common.constant.BlockChainConstants;
 import com.meiren.blockchain.common.io.BlockChainInput;
 import com.meiren.blockchain.common.util.HashUtils;
+import com.meiren.blockchain.common.util.JsonUtils;
 import com.meiren.blockchain.entity.Block;
 import com.meiren.blockchain.entity.BlockIndex;
 import com.meiren.blockchain.entity.DiskBlockIndex;
@@ -85,8 +86,10 @@ public class BlockServiceTest extends BaseServiceTest{
 	}
 	@Test
 	public void test2(){
-		Block block = blockService.readFromDisk(38);
+		Block block = blockService.readFromDisk(1);
 		System.out.println(new String(block.stores[0].storeScript));
+		String str = HashUtils.toHexStringAsLittleEndian(block.toByteArray());
+		System.out.println(str);
 	}
 
 	@Test
@@ -95,5 +98,25 @@ public class BlockServiceTest extends BaseServiceTest{
 		while (true){
 			int i =1;
 		}
+	}
+
+	@Test
+	public void test4() throws IOException {
+		Store[] stores = new Store[1];
+		byte[] result = storeService.buildStore("meiren_blockchain_service");
+		BlockChainInput input = new BlockChainInput(result);
+		Store store = new Store(input);
+		stores[0] = store;
+		Block block = blockService.nextBlock(stores, HashUtils.toBytesAsLittleEndian("0000000000000000000000000000000000000000000000000000000000000000"));
+		String str = HashUtils.toHexStringAsLittleEndian(block.toByteArray());
+		System.out.println(str);
+	}
+
+	@Test
+	public void test5() throws IOException {
+		String str = "5ab8c2af656369767265735f6e696168636b636f6c625f6e657269656d1900000001010000007b1d00ffff5ab8c2af41d8bd80e94b98775a67adad8c412dea4f0af163b5441c2acb73a640cd99a747000000000000000000000000000000000000000000000000000000000000000000000001";
+		BlockChainInput input = new BlockChainInput(HashUtils.toBytesAsLittleEndian(str));
+		Block block = new Block(input);
+		JsonUtils.printJson(block);
 	}
 }
