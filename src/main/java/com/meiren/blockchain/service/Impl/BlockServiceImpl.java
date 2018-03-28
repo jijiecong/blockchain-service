@@ -156,18 +156,25 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 
 		initBlockData();
 		initConnectionPool();
-		leader();
-//		initServer();
+//		leader();
+		new Thread(new Runnable(){
+			@Override
+			public void run() {
+				leader();
+			}
+		}).start();
+
+		initServer();
 
 	}
 
 	private void initServer() throws IOException {
 		ServerSocket serverSocket = new ServerSocket(BlockChainConstants.PORT);
 		log.info("等待其他节点连接...");
-//		while(true){
+		while(true){
 			this.server = new PeerServer(serverSocket, this);
 			server.start();
-//		}
+		}
 	}
 
 	public void destroy() {
@@ -272,6 +279,25 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		try {
 			this.pool.sendMessage(new GetBlocksMessage(HashUtils.toBytesAsLittleEndian(this.lastBlockHash),
 										BlockChainConstants.ZERO_HASH_BYTES));
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	/**
+	 * 每天定时清除一次缓存中无效的block
+	 * */
+	@Scheduled(initialDelay = 10_000, fixedRate = 24*60*60*1000)
+	public void removeInvalidBlockFromCache() {
+		lock.lock();
+		log.info("remove invalid block from cache begin...");
+		try {
+			for(String prevHash : cache.keySet()){
+				DiskBlockIndexDO diskBlockIndexDO = diskBlockIndexDAO.findByPrevBlockHash(prevHash);
+				if (diskBlockIndexDO != null) {
+					cache.remove(prevHash);
+				}
+			}
 		} finally {
 			lock.unlock();
 		}
@@ -664,7 +690,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		//		ips.add("192.168.4.166");
 		String ip = "192.168.4.223";
 		try {
-			initServer();
+//			initServer();
 			Thread.sleep(3000);
 
 			//			for (String ip : ips) {
@@ -722,7 +748,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			selectors.add(leaderSelector);
 
 			//			}
-			Thread.sleep(Integer.MAX_VALUE);
+			Thread.sleep(Long.MAX_VALUE);
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {

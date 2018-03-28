@@ -58,7 +58,7 @@ public class LeaderShipTest extends BaseServiceTest{
 				selectors.add(leaderSelector);
 
 //			}
-			Thread.sleep(Integer.MAX_VALUE);
+			Thread.sleep(Long.MAX_VALUE);
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
