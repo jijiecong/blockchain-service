@@ -12,5 +12,6 @@
  
 block本地缓冲池清理√定时任务每天清除一次
  
-store来不及更新导致重复打包√打包store进block方法和移除新增block包含的store方法加锁，限制执行顺序 
+store来不及更新导致重复打包√打包store进block方法和移除新增block包含的store方法加锁，限制执行顺序
+ 
 选举leader和socketServer都需要阻塞导致初始化有问题√一开始将socketServer做成只有一个连接，优化后将选举leader另外开一条线程以便socketServer可以同时连接多个
