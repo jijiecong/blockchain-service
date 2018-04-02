@@ -124,15 +124,17 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 
 	}
 
-	public void writeToDisk(Block block, int nFile) {
+	public void writeToDisk(Block block, int nFile, Boolean append) {
 		String pathBlk = "D:\\meiren\\blocks\\";
-		BlockChainFileUtils.createFile(pathBlk, "blk"+nFile, block.toByteArray());
+		BlockChainFileUtils.createFile(pathBlk, "blk"+nFile, block.toByteArray(), append);
 	}
 
-	public Block readFromDisk(int nFile) {
+	public Block readFromDisk(int nFile, int begin, int end) {
 		String pathBlk = "D:\\meiren\\blocks\\";
 		byte[] blockdata = BlockChainFileUtils.readFiletoByteArray(pathBlk+"blk"+nFile+".dat");
-		BlockChainInput input = new BlockChainInput(blockdata);
+		byte[] result = new byte[end - begin];
+		System.arraycopy(blockdata, begin, result, 0, end - begin);
+		BlockChainInput input = new BlockChainInput(result);
 		Block block = null;
 		try {
 			block = new Block(input);
@@ -194,8 +196,12 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	}
 
 	private void initBlockData() throws IOException {
-		int nFile = diskBlockIndexService.getMaxnFile();
-		if (nFile == 0) {
+//		int nFile = diskBlockIndexService.getMaxnFile();
+		BlockIndex blockIndex = blockIndexService.getLastestBlockIndex();
+		int nFile ;
+		int begin ;
+		int end;
+		if (blockIndex == null) {
 			// add genesis block:
 			log.info("Add genesis block...");
 //			try (BlockChainInput input = new BlockChainInput(BlockChainConstants.GENESIS_BLOCK_DATA)) {
@@ -214,9 +220,21 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			Block block = new Block(input);
 			processNextBlock(block);
 			nFile = 1;
+			begin = 0;
+			end = block.toByteArray().length;
+		}else {
+			nFile = blockIndex.nFile;
+			BlockIndex blockIndexPrev = blockIndex.pprev;
+			if(blockIndexPrev == null || blockIndex.nFile != blockIndexPrev.nFile){//第一个block获取block在新的dat文件的第一个
+				begin = 0;
+				end = blockIndex.nBlockPos;
+			}else {
+				begin = blockIndexPrev.nBlockPos;
+				end = blockIndex.nBlockPos;
+			}
 		}
 		// get last block:
-		Block last = readFromDisk(nFile);
+		Block last = readFromDisk(nFile, begin, end);
 		this.lastBlockHash = HashUtils.toHexStringAsLittleEndian(last.getBlockHash());
 		log.info("Last block: " + this.lastBlockHash + " created at "
 				+ Instant.ofEpochSecond(last.header.timestamp).atZone(ZoneId.systemDefault()).toString());
@@ -414,8 +432,13 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				String blockHash = HashUtils.toHexStringAsLittleEndian(getBlocksMsg.getHashes()[0]);
 				while(true){
 					DiskBlockIndexDO diskBlockIndexDO = diskBlockIndexDAO.findByPrevBlockHash(blockHash);
-					if(diskBlockIndexDO!=null){
-						Block block = readFromDisk(diskBlockIndexDO.getnFile());
+					DiskBlockIndexDO diskBlockIndexDOPrev = diskBlockIndexDAO.findByBlockHash(blockHash);
+					if(diskBlockIndexDO != null){
+						int begin = 0;
+						if(diskBlockIndexDOPrev != null && diskBlockIndexDOPrev.getnFile() == diskBlockIndexDO.getnFile()){
+							begin = diskBlockIndexDOPrev.getnBlockPos();
+						}
+						Block block = readFromDisk(diskBlockIndexDO.getnFile(), begin, diskBlockIndexDO.getnBlockPos());
 						sender.sendMessage(new BlockMessage(block.toByteArray()));
 						if(StringUtils.isBlank(diskBlockIndexDO.getNextHash())){
 							break;
@@ -429,8 +452,13 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				for(byte[] hash : getBlocksMsg.getHashes()){
 					String blockHash = HashUtils.toHexStringAsLittleEndian(hash);
 					DiskBlockIndexDO diskBlockIndexDO = diskBlockIndexDAO.findByPrevBlockHash(blockHash);
+					DiskBlockIndexDO diskBlockIndexDOPrev = diskBlockIndexDAO.findByBlockHash(blockHash);
 					if(diskBlockIndexDO != null){
-						Block block = readFromDisk(diskBlockIndexDO.getnFile());
+						int begin = 0;
+						if(diskBlockIndexDOPrev != null && diskBlockIndexDOPrev.getnFile() == diskBlockIndexDO.getnFile()){
+							begin = diskBlockIndexDOPrev.getnBlockPos();
+						}
+						Block block = readFromDisk(diskBlockIndexDO.getnFile(), begin, diskBlockIndexDO.getnBlockPos());
 						sender.sendMessage(new BlockMessage(block.toByteArray()));
 					}
 				}
@@ -477,19 +505,26 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				System.exit(1);
 				return;
 			}
-			int nFile = diskBlockIndexService.getMaxnFile() + 1;
-			writeToDisk(block, nFile);
-			this.lastBlockHash = hash;
-
+			int nFile = diskBlockIndexService.getMaxnFile();
 			BlockIndex lastestBlockIndex = blockIndexService.getLastestBlockIndex();
+			int nHeight = 1;
+			int nBlockPos = lastestBlockIndex.nBlockPos;
+
+			long size = BlockChainFileUtils.getFileSize("D:\\meiren\\blocks\\blk"+nFile+".dat");
+			if(size > 1024 * 10){//如果文件已经大于10M，写入新文件中
+				nFile++;
+				nBlockPos = 0;
+			}
+			writeToDisk(block, nFile, Boolean.TRUE);
+			this.lastBlockHash = hash;
+			if(lastestBlockIndex != null){
+				nHeight = lastestBlockIndex.nHeight + 1;
+			}
 			DiskBlockIndex diskBlockIndex = new DiskBlockIndex();
 			diskBlockIndex.pHashBlock = block.getBlockHash();
 			diskBlockIndex.nFile = nFile;
-			if(lastestBlockIndex == null){
-				diskBlockIndex.nHeight = 1;
-			}else {
-				diskBlockIndex.nHeight = lastestBlockIndex.nHeight + 1;
-			}
+			diskBlockIndex.nHeight = nHeight;
+			diskBlockIndex.nBlockPos = block.toByteArray().length + nBlockPos;
 			diskBlockIndex.nextHash = null;
 			diskBlockIndex.version = 1;
 			diskBlockIndex.prevHash = block.header.prevHash;

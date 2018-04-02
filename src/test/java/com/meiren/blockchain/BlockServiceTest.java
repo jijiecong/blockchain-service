@@ -2,6 +2,7 @@ package com.meiren.blockchain;
 
 import com.meiren.blockchain.common.constant.BlockChainConstants;
 import com.meiren.blockchain.common.io.BlockChainInput;
+import com.meiren.blockchain.common.util.BlockChainFileUtils;
 import com.meiren.blockchain.common.util.HashUtils;
 import com.meiren.blockchain.common.util.JsonUtils;
 import com.meiren.blockchain.entity.Block;
@@ -39,13 +40,13 @@ public class BlockServiceTest extends BaseServiceTest{
 	@Test
 	public void test1() throws IOException {
 		String[] strArray = new String[]{
-				"http://meiren.pic.53.jpg",
-				"http://meiren.pic.342.jpg",
-				"http://meiren.pic.54.jpg",
-				"http://meiren.pic.453.jpg",
-				"http://meiren.pic.64.jpg",
-				"http://meiren.pic.6.jpg",
-				"http://meiren.pic.63.jpg"};
+				"http://meiren.pic.115.jpg",
+				"http://meiren.pic.113.jpg",
+				"http://meiren.pic.215.jpg",
+				"http://meiren.pic.114.jpg",
+				"http://meiren.pic.314.jpg",
+				"http://meiren.pic.316.jpg",
+				"http://meiren.pic.613.jpg"};
 		Store[] stores = new Store[strArray.length];
 		for (int i=0; i< strArray.length; i++) {
 			byte[] result = storeService.buildStore(strArray[i]);
@@ -57,9 +58,11 @@ public class BlockServiceTest extends BaseServiceTest{
 		BlockIndex lastestBlockIndex = blockIndexService.getLastestBlockIndex();
 		byte[] preHash = BlockChainConstants.ZERO_HASH_BYTES;
 		int nHeight = 1;
+		int nBlockPos = 0;
 		if(lastestBlockIndex != null){
 			preHash = lastestBlockIndex.getBlockHash();//HashUtils.toBytesAsLittleEndian("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
 			nHeight = lastestBlockIndex.nHeight + 1;
+			nBlockPos = lastestBlockIndex.nBlockPos;
 		}
 		Block block = blockService.nextBlock(stores, preHash);
 //		JsonUtils.printJson(block);
@@ -67,11 +70,16 @@ public class BlockServiceTest extends BaseServiceTest{
 //		BlockChainInput input = new BlockChainInput(blockData);
 //		Block block1 = new Block(input);
 //		JsonUtils.printJson(block1);
-		int nFile = diskBlockIndexService.getMaxnFile() + 1;
-		blockService.writeToDisk(block, nFile);
+		int nFile = diskBlockIndexService.getMaxnFile();
+		long size = BlockChainFileUtils.getFileSize("D:\\meiren\\blocks\\blk"+nFile+".dat");
+		if(size > 1024 * 10){
+			nFile++;
+		}
+		blockService.writeToDisk(block, nFile, Boolean.TRUE);
 //		DiskBlockIndexService diskBlockIndexService = new DiskBlockIndexServiceImpl();
 		DiskBlockIndex diskBlockIndex = new DiskBlockIndex();
 		diskBlockIndex.pHashBlock = block.getBlockHash();
+		diskBlockIndex.nBlockPos = block.toByteArray().length + nBlockPos;
 		diskBlockIndex.nFile = nFile;
 		diskBlockIndex.nHeight = nHeight;
 		diskBlockIndex.nextHash = null;
@@ -86,7 +94,7 @@ public class BlockServiceTest extends BaseServiceTest{
 	}
 	@Test
 	public void test2(){
-		Block block = blockService.readFromDisk(1);
+		Block block = blockService.readFromDisk(16, 10, 20);
 		System.out.println(new String(block.stores[0].storeScript));
 		String str = HashUtils.toHexStringAsLittleEndian(block.toByteArray());
 		System.out.println(str);
@@ -117,6 +125,22 @@ public class BlockServiceTest extends BaseServiceTest{
 		String str = "5ab8c2af656369767265735f6e696168636b636f6c625f6e657269656d1900000001010000007b1d00ffff5ab8c2af41d8bd80e94b98775a67adad8c412dea4f0af163b5441c2acb73a640cd99a747000000000000000000000000000000000000000000000000000000000000000000000001";
 		BlockChainInput input = new BlockChainInput(HashUtils.toBytesAsLittleEndian(str));
 		Block block = new Block(input);
+		JsonUtils.printJson(block);
+	}
+
+	@Test
+	public void test6(){
+		String pathBlk = "D:\\meiren\\blocks\\";
+		byte[] blockdata = BlockChainFileUtils.readFiletoByteArray(pathBlk+"blk"+16+".dat");
+		byte[] result1 = new byte[306];
+		System.arraycopy(blockdata, 313, result1, 0, 306);
+		BlockChainInput input = new BlockChainInput(blockdata);
+		Block block = null;
+		try {
+			block = new Block(input);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		JsonUtils.printJson(block);
 	}
 }
