@@ -86,6 +86,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	@Autowired
 	private BlockIndexService blockIndexService;
 
+	private final String path = "D:\\meiren\\blocks\\";
 
 	public void importBlockChain() {
 
@@ -125,12 +126,12 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	}
 
 	public void writeToDisk(Block block, int nFile, Boolean append) {
-		String pathBlk = "D:\\meiren\\blocks\\";
+		String pathBlk = path;
 		BlockChainFileUtils.createFile(pathBlk, "blk"+nFile, block.toByteArray(), append);
 	}
 
 	public Block readFromDisk(int nFile, int begin, int end) {
-		String pathBlk = "D:\\meiren\\blocks\\";
+		String pathBlk = path;
 		byte[] blockdata = BlockChainFileUtils.readFiletoByteArray(pathBlk+"blk"+nFile+".dat");
 		byte[] result = new byte[end - begin];
 		System.arraycopy(blockdata, begin, result, 0, end - begin);
@@ -508,18 +509,20 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			int nFile = diskBlockIndexService.getMaxnFile();
 			BlockIndex lastestBlockIndex = blockIndexService.getLastestBlockIndex();
 			int nHeight = 1;
-			int nBlockPos = lastestBlockIndex.nBlockPos;
+			int nBlockPos = 0;
+			if(lastestBlockIndex != null){
+				nHeight = lastestBlockIndex.nHeight + 1;
+				nBlockPos = lastestBlockIndex.nBlockPos;
 
-			long size = BlockChainFileUtils.getFileSize("D:\\meiren\\blocks\\blk"+nFile+".dat");
+			}
+			long size = BlockChainFileUtils.getFileSize(path + "blk"+nFile+".dat");
 			if(size > 1024 * 10){//如果文件已经大于10M，写入新文件中
 				nFile++;
 				nBlockPos = 0;
 			}
 			writeToDisk(block, nFile, Boolean.TRUE);
 			this.lastBlockHash = hash;
-			if(lastestBlockIndex != null){
-				nHeight = lastestBlockIndex.nHeight + 1;
-			}
+
 			DiskBlockIndex diskBlockIndex = new DiskBlockIndex();
 			diskBlockIndex.pHashBlock = block.getBlockHash();
 			diskBlockIndex.nFile = nFile;
