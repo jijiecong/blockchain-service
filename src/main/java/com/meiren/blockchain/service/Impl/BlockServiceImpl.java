@@ -25,6 +25,7 @@ import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.utils.CloseableUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import java.io.IOException;
@@ -86,7 +87,35 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	@Autowired
 	private BlockIndexService blockIndexService;
 
-	private final String path = "D:\\meiren\\blocks\\";
+	@Value("${blockindex.disk.path}")
+	private String pathDisk;
+
+	@Value("${blockfile.prefix}")
+	private String blockFilePrefix;
+
+	@Value("${blockfile.extension}")
+	private String blockFileExtension;
+
+	@Value("${takeleadership.port}")
+	private String takeLeaderShipPort;
+
+	@Value("${takeleadership.path}")
+	private String takeLeaderShipPath;
+
+	@Value("${base.sleep.time}")
+	private String baseSleepTime;
+
+	@Value("${max.retries}")
+	private String maxRetries;
+
+	@Value("${session.time.out}")
+	private String sessionTimeOut;
+
+	@Value("${connection.time.out}")
+	private String connectionTimeOut;
+
+	@Value("${name.space}")
+	private String nameSpace;
 
 	public void importBlockChain() {
 
@@ -126,13 +155,13 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	}
 
 	public void writeToDisk(Block block, int nFile, Boolean append) {
-		String pathBlk = path;
-		BlockChainFileUtils.createFile(pathBlk, "blk"+nFile, block.toByteArray(), append);
+		String pathBlk = pathDisk;
+		BlockChainFileUtils.createFile(pathBlk, blockFilePrefix +nFile, block.toByteArray(), append);
 	}
 
 	public Block readFromDisk(int nFile, int begin, int end) {
-		String pathBlk = path;
-		byte[] blockdata = BlockChainFileUtils.readFiletoByteArray(pathBlk+"blk"+nFile+".dat");
+		String pathBlk = pathDisk;
+		byte[] blockdata = BlockChainFileUtils.readFiletoByteArray(pathBlk+ blockFilePrefix +nFile+blockFileExtension);
 		byte[] result = new byte[end - begin];
 		System.arraycopy(blockdata, begin, result, 0, end - begin);
 		BlockChainInput input = new BlockChainInput(result);
@@ -486,7 +515,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				log.warn("Validate block failed: expected prevHash = " + this.lastBlockHash + ", actual = " + prevHash);
 				// cannot continue process:
 				this.deque.clear();
-				System.exit(1);
+//				System.exit(1);
 				return;
 			}
 			// check merkle root:
@@ -496,14 +525,14 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				log.error("Invalid merkle hash: expected = " + expectedMerkle + ", actual = " + actualMerkle);
 				// cannot continue process:
 				this.deque.clear();
-				System.exit(1);
+//				System.exit(1);
 				return;
 			}
 			// check stores:
 			if (!checkStores(block)) {
 				log.error("Check stores failed.");
 				this.deque.clear();
-				System.exit(1);
+//				System.exit(1);
 				return;
 			}
 			int nFile = diskBlockIndexService.getMaxnFile();
@@ -515,8 +544,8 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				nBlockPos = lastestBlockIndex.nBlockPos;
 
 			}
-			long size = BlockChainFileUtils.getFileSize(path + "blk"+nFile+".dat");
-			if(size > 1024 * 10){//如果文件已经大于10M，写入新文件中
+			long size = BlockChainFileUtils.getFileSize(pathDisk + blockFilePrefix+nFile+blockFileExtension);
+			if(size > 1024 * 1024 * 10 || nFile == 0){//如果文件已经大于10M，写入新文件中
 				nFile++;
 				nBlockPos = 0;
 			}
@@ -710,9 +739,9 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 //		}
 //	}
 
-	private static final String PATH = "/blockChain/leader";
-	private boolean waitGetLastest = true;
-	private boolean isLastest = false;
+//	private static final String PATH = "/blockChain/leader";
+//	private boolean waitGetLastest = true;
+//	private boolean isLastest = false;
 	private volatile boolean waitCheckBlock = true;
 	private volatile int countSure = 0;
 	private volatile int countAllConn = 0;
@@ -725,7 +754,6 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		List<CuratorFramework> clients = new ArrayList<>();
 		List<String> ips = new ArrayList<>();
 		ips.add("192.168.4.223");
-		//		ips.add("192.168.4.166");
 		String ip = "192.168.4.223";
 		try {
 //			initServer();
@@ -736,7 +764,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			clients.add(client);
 
 			final String name = "client#" + ip;
-			LeaderSelector leaderSelector = new LeaderSelector(client, PATH, new LeaderSelectorListener() {
+			LeaderSelector leaderSelector = new LeaderSelector(client, takeLeaderShipPath, new LeaderSelectorListener() {
 				@Override
 				public void takeLeadership(CuratorFramework client) throws Exception {
 					System.out.println(name + ":I am leader.");
@@ -801,11 +829,11 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		}
 	}
 
-	private static CuratorFramework getClient(String ip) {
-		RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-		CuratorFramework client = CuratorFrameworkFactory.builder().connectString(ip + ":2181")
-				.retryPolicy(retryPolicy).sessionTimeoutMs(6000).connectionTimeoutMs(3000)
-				.namespace("blockChain").build();
+	private CuratorFramework getClient(String ip) {
+		RetryPolicy retryPolicy = new ExponentialBackoffRetry(Integer.parseInt(baseSleepTime), Integer.parseInt(maxRetries));
+		CuratorFramework client = CuratorFrameworkFactory.builder().connectString(ip + ":" + takeLeaderShipPort)
+				.retryPolicy(retryPolicy).sessionTimeoutMs(Integer.parseInt(sessionTimeOut)).connectionTimeoutMs(Integer.parseInt(connectionTimeOut))
+				.namespace(nameSpace).build();
 		client.start();
 		return client;
 	}

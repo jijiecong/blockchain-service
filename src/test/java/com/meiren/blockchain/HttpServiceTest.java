@@ -26,8 +26,10 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.Inet4Address;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.net.UnknownHostException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -241,17 +243,18 @@ public class HttpServiceTest extends BaseServiceTest{
 	}
 
 	@Test
-	public void getIp (){
+	public void getIp () throws UnknownHostException {
 		System.out.println(NetworkUtils.getLocalInetAddress().getHostAddress());
-		System.out.println(System.currentTimeMillis());
-		System.out.println(Instant.now().getEpochSecond());
-		long a = System.currentTimeMillis();
-		long b = Instant.now().getEpochSecond();
-		System.out.println(Instant.ofEpochSecond(a).atZone(ZoneId.of("Z")).toString());
-		System.out.println(Instant.ofEpochSecond(b).atZone(ZoneId.of("Z")).toString());
-		Header header = new Header();
-		header.timestamp = b;
-		JsonUtils.printJson(header);
-		System.out.println(3/2);
+		System.out.println(Inet4Address.getLocalHost().getHostAddress());
+//		System.out.println(System.currentTimeMillis());
+//		System.out.println(Instant.now().getEpochSecond());
+//		long a = System.currentTimeMillis();
+//		long b = Instant.now().getEpochSecond();
+//		System.out.println(Instant.ofEpochSecond(a).atZone(ZoneId.of("Z")).toString());
+//		System.out.println(Instant.ofEpochSecond(b).atZone(ZoneId.of("Z")).toString());
+//		Header header = new Header();
+//		header.timestamp = b;
+//		JsonUtils.printJson(header);
+//		System.out.println(3/2);
 	}
 }

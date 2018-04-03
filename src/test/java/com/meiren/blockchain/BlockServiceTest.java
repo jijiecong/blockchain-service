@@ -130,17 +130,7 @@ public class BlockServiceTest extends BaseServiceTest{
 
 	@Test
 	public void test6(){
-		String pathBlk = "D:\\meiren\\blocks\\";
-		byte[] blockdata = BlockChainFileUtils.readFiletoByteArray(pathBlk+"blk"+16+".dat");
-		byte[] result1 = new byte[306];
-		System.arraycopy(blockdata, 313, result1, 0, 306);
-		BlockChainInput input = new BlockChainInput(blockdata);
-		Block block = null;
-		try {
-			block = new Block(input);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		JsonUtils.printJson(block);
+		Block block = blockService.readFromDisk(2, 2121, 2554);
+		System.out.println(new String(block.stores[4].storeScript));
 	}
 }

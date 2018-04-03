@@ -1,5 +1,6 @@
 package com.meiren.blockchain;
 
+import com.meiren.blockchain.common.util.BlockChainFileUtils;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -101,6 +102,6 @@ public class CommonTest {
 
 	@Test
 	public void readFromDisk(){
-
+		System.out.println(BlockChainFileUtils.getFileSize("D:/blk21.dat"));
 	}
 }
