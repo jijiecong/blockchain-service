@@ -130,7 +130,10 @@ public class BlockServiceTest extends BaseServiceTest{
 
 	@Test
 	public void test6(){
-		Block block = blockService.readFromDisk(2, 2121, 2554);
-		System.out.println(new String(block.stores[4].storeScript));
+		Block block = blockService.readFromDisk(1, 761, 1194);
+		for(Store store : block.stores ){
+			System.out.println(new String(store.storeScript));
+		}
+
 	}
 }

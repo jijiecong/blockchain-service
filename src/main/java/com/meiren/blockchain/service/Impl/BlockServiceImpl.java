@@ -461,7 +461,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			if(Arrays.equals(getBlocksMsg.getHashStop(), BlockChainConstants.ZERO_HASH_BYTES)){
 				String blockHash = HashUtils.toHexStringAsLittleEndian(getBlocksMsg.getHashes()[0]);
 				while(true){
-					DiskBlockIndexDO diskBlockIndexDO = diskBlockIndexDAO.findByPrevBlockHash(blockHash);
+						DiskBlockIndexDO diskBlockIndexDO = diskBlockIndexDAO.findByPrevBlockHash(blockHash);
 					DiskBlockIndexDO diskBlockIndexDOPrev = diskBlockIndexDAO.findByBlockHash(blockHash);
 					if(diskBlockIndexDO != null){
 						int begin = 0;
