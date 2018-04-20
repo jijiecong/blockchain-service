@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.meiren.blockchain.dao.DiskTxIndexDAO" >
+<resultMap id="getTx_RM" type="com.meiren.blockchain.dataobject.DiskTxIndexDO">
+	
+					<id column="txHash" property="tx_hash"/>
+			
+					<result property="nFile" column="n_file"/>
+			
+					<result property="nBlockPos" column="n_block_pos"/>
+
+					<result property="nTxOffset" column="n_tx_offset"/>
+
+					<result property="txSize" column="tx_size"/>
+</resultMap>
+
+<!-- 所有字段 -->
+<sql id="All_DiskTxIndex_Fields">
+						tx_hash,
+			            n_file,
+			            n_block_pos,
+			            n_tx_offset,
+			            tx_size
+		
+</sql>
+
+<insert id="create" parameterType="com.meiren.blockchain.dataobject.DiskTxIndexDO" >
+	INSERT INTO disk_tx_index (
+											tx_hash,
+								n_file,
+								n_block_pos,
+								n_tx_offset,
+								tx_size
+				)
+	VALUES (
+											#{txHash},
+								#{nFile},
+								#{nBlockPos},
+								#{nTxOffset},
+								#{txSize}
+				)
+</insert>
+
+<select id="findByTxHash" resultType="com.meiren.blockchain.dataobject.DiskTxIndexDO" parameterType="String">
+	SELECT <include refid="All_DiskTxIndex_Fields"/>
+	from disk_tx_index
+	WHERE tx_hash = #{txHash}
+</select>
+</mapper>

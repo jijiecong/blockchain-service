@@ -5,17 +5,11 @@ import com.meiren.blockchain.common.io.BlockChainInput;
 import com.meiren.blockchain.common.util.BlockChainFileUtils;
 import com.meiren.blockchain.common.util.HashUtils;
 import com.meiren.blockchain.common.util.JsonUtils;
-import com.meiren.blockchain.entity.Block;
-import com.meiren.blockchain.entity.BlockIndex;
-import com.meiren.blockchain.entity.DiskBlockIndex;
-import com.meiren.blockchain.entity.Store;
-import com.meiren.blockchain.service.BlockIndexService;
-import com.meiren.blockchain.service.BlockService;
-import com.meiren.blockchain.service.DiskBlockIndexService;
+import com.meiren.blockchain.entity.*;
+import com.meiren.blockchain.service.*;
 import com.meiren.blockchain.service.Impl.BlockServiceImpl;
 import com.meiren.blockchain.service.Impl.DiskBlockIndexServiceImpl;
 import com.meiren.blockchain.service.Impl.StoreServiceImpl;
-import com.meiren.blockchain.service.StoreService;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
@@ -26,60 +20,63 @@ import java.util.Scanner;
 public class BlockServiceTest extends BaseServiceTest{
 	ClassPathXmlApplicationContext applicationContext = getApplicationContext();
 
-	StoreService storeService = (StoreService) applicationContext.getBean("storeService");
+	DiskUTxOIndexService diskUTxOIndexService = (DiskUTxOIndexService) applicationContext.getBean("diskUTxOIndexService");
+	TransactionService transactionService = (TransactionService) applicationContext.getBean("transactionService");
 	DiskBlockIndexService diskBlockIndexService = (DiskBlockIndexService) applicationContext.getBean("diskBlockIndexService");
 	BlockService blockService = (BlockService) applicationContext.getBean("blockService");
 	BlockIndexService blockIndexService = (BlockIndexService) applicationContext.getBean("blockIndexService");
-//	@Autowired
-//	private BlockServiceImpl blockService;
-//	@Autowired
-//	private DiskBlockIndexServiceImpl diskBlockIndexService;
-//	@Autowired
-//	private StoreServiceImpl storeService;
+	DiskTxIndexService diskTxIndexService = (DiskTxIndexService) applicationContext.getBean("diskTxIndexService");
 
 	@Test
 	public void test1() throws IOException {
-		String[] strArray = new String[]{
-				"http://meiren.pic.115.jpg",
-				"http://meiren.pic.113.jpg",
-				"http://meiren.pic.215.jpg",
-				"http://meiren.pic.114.jpg",
-				"http://meiren.pic.314.jpg",
-				"http://meiren.pic.316.jpg",
-				"http://meiren.pic.613.jpg"};
-		Store[] stores = new Store[strArray.length];
-		for (int i=0; i< strArray.length; i++) {
-			byte[] result = storeService.buildStore(strArray[i]);
-			BlockChainInput input = new BlockChainInput(result);
-			Store store = new Store(input);
-			stores[i] = store;
-		}
-//		BlockService blockService = new BlockServiceImpl();
+		TxIn[] txIns = new TxIn[1];
+		TxIn txIn = new TxIn(BlockChainConstants.ZERO_HASH_BYTES, 0L);
+//		TxIn txIn = new TxIn(HashUtils.toBytesAsLittleEndian("3e074488cfebd5aaf3384013955a5a9f9eb9ee2783a9b8249c5d884b67a5dca2"), 0L);
+		txIns[0] = txIn;
+		TxOut[] txOuts = new TxOut[1];
+		TxOut txOut2 = new TxOut(100L, "adnonstop".getBytes(), "adnonstop".getBytes());
+		txOuts[0] = txOut2;
+//		for (int i=1; i<1000; i++){
+//			TxOut txOut = new TxOut(0L, "adnonstop".getBytes(), "adnonstop".getBytes());
+//			txOuts[i] = txOut;
+//		}
+//		TxOut txOut = new TxOut(40L, "adnonstop".getBytes(), "18868890124".getBytes());
+//		TxOut txOut2 = new TxOut(1L, "adnonstop".getBytes(), "adnonstop".getBytes());
+//		txOuts[0] = txOut;
+//		txOuts[1] = txOut2;
+		byte[] operator = "adnonstop".getBytes();
+		byte[] transaction = transactionService.buildTransaction(txIns, txOuts, operator);
+		BlockChainInput blockChainInput = new BlockChainInput(transaction);
+		Transaction transaction1 = new Transaction(blockChainInput);
+		Transaction[] transactions = new Transaction[1];
+		transactions[0] = transaction1;
+
 		BlockIndex lastestBlockIndex = blockIndexService.getLastestBlockIndex();
 		byte[] preHash = BlockChainConstants.ZERO_HASH_BYTES;
 		int nHeight = 1;
-		int nBlockPos = 0;
 		if(lastestBlockIndex != null){
 			preHash = lastestBlockIndex.getBlockHash();//HashUtils.toBytesAsLittleEndian("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
 			nHeight = lastestBlockIndex.nHeight + 1;
-			nBlockPos = lastestBlockIndex.nBlockPos;
 		}
-		Block block = blockService.nextBlock(stores, preHash);
+		Block block = blockService.nextBlock(transactions, preHash);
+
 //		JsonUtils.printJson(block);
 //		byte[] blockData = block.toByteArray();
 //		BlockChainInput input = new BlockChainInput(blockData);
 //		Block block1 = new Block(input);
 //		JsonUtils.printJson(block1);
 		int nFile = diskBlockIndexService.getMaxnFile();
-		long size = BlockChainFileUtils.getFileSize("D:\\meiren\\blocks\\blk"+nFile+".dat");
-		if(size > 1024 * 10){
+		int nBlockPos = (int) BlockChainFileUtils.getFileSize("D:\\meiren\\blocks\\blk"+nFile+".dat");
+		if(nBlockPos > 1024 * 10){
 			nFile++;
+			nBlockPos = 0;
 		}
 		blockService.writeToDisk(block, nFile, Boolean.TRUE);
 //		DiskBlockIndexService diskBlockIndexService = new DiskBlockIndexServiceImpl();
 		DiskBlockIndex diskBlockIndex = new DiskBlockIndex();
 		diskBlockIndex.pHashBlock = block.getBlockHash();
-		diskBlockIndex.nBlockPos = block.toByteArray().length + nBlockPos;
+		diskBlockIndex.nBlockPos = nBlockPos;
+		diskBlockIndex.nBlockSize = block.toByteArray().length;
 		diskBlockIndex.nFile = nFile;
 		diskBlockIndex.nHeight = nHeight;
 		diskBlockIndex.nextHash = null;
@@ -91,13 +88,16 @@ public class BlockServiceTest extends BaseServiceTest{
 		diskBlockIndex.nonce = block.header.nonce;
 		diskBlockIndexService.writeToDisk(diskBlockIndex);
 //		blockService.readFromDisk(1);
+		diskTxIndexService.writeToDiskBlock(block, nFile, nBlockPos);
+
+		diskUTxOIndexService.writeToDiskBlock(block);
+		diskUTxOIndexService.removeFromBlock(block);
 	}
+
 	@Test
 	public void test2(){
-		Block block = blockService.readFromDisk(16, 10, 20);
-		System.out.println(new String(block.stores[0].storeScript));
-		String str = HashUtils.toHexStringAsLittleEndian(block.toByteArray());
-		System.out.println(str);
+		Block block = blockService.readFromDiskBySize(0, 0, 167);
+		System.out.println(HashUtils.toHexStringAsLittleEndian(block.toByteArray()));
 	}
 
 	@Test
@@ -108,32 +108,4 @@ public class BlockServiceTest extends BaseServiceTest{
 		}
 	}
 
-	@Test
-	public void test4() throws IOException {
-		Store[] stores = new Store[1];
-		byte[] result = storeService.buildStore("meiren_blockchain_service");
-		BlockChainInput input = new BlockChainInput(result);
-		Store store = new Store(input);
-		stores[0] = store;
-		Block block = blockService.nextBlock(stores, HashUtils.toBytesAsLittleEndian("0000000000000000000000000000000000000000000000000000000000000000"));
-		String str = HashUtils.toHexStringAsLittleEndian(block.toByteArray());
-		System.out.println(str);
-	}
-
-	@Test
-	public void test5() throws IOException {
-		String str = "5ab8c2af656369767265735f6e696168636b636f6c625f6e657269656d1900000001010000007b1d00ffff5ab8c2af41d8bd80e94b98775a67adad8c412dea4f0af163b5441c2acb73a640cd99a747000000000000000000000000000000000000000000000000000000000000000000000001";
-		BlockChainInput input = new BlockChainInput(HashUtils.toBytesAsLittleEndian(str));
-		Block block = new Block(input);
-		JsonUtils.printJson(block);
-	}
-
-	@Test
-	public void test6(){
-		Block block = blockService.readFromDisk(1, 761, 1194);
-		for(Store store : block.stores ){
-			System.out.println(new String(store.storeScript));
-		}
-
-	}
 }

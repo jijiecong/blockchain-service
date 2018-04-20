@@ -12,6 +12,8 @@
 
 					<result property="nHeight" column="n_height"/>
 
+					<result property="nBlockSize" column="n_block_size"/>
+
 					<result property="nextHash" column="next_hash"/>
 
 					<result property="version" column="version"/>
@@ -33,6 +35,7 @@
 			            block_hash,
 			            n_file,
 			            n_block_pos,
+			            n_block_size,
 			            n_height,
 			            next_hash,
 			            version,
@@ -49,6 +52,7 @@
 											block_hash,
 								n_file,
 								n_block_pos,
+								n_block_size,
 								n_height,
 								next_hash,
 								version,
@@ -62,6 +66,7 @@
 											#{blockHash},
 								#{nFile},
 								#{nBlockPos},
+								#{nBlockSize},
 								#{nHeight},
 								#{nextHash},
 								#{version},

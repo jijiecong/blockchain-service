@@ -1,8 +1,8 @@
 package com.meiren.blockchain.p2p.message;
 
 import com.meiren.blockchain.common.io.BlockChainInput;
-import com.meiren.blockchain.entity.Block;
 import com.meiren.blockchain.entity.Store;
+import com.meiren.blockchain.entity.Transaction;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -15,39 +15,39 @@ import java.io.IOException;
  * 
  * @author jijc
  */
-public class StoreMessage extends Message {
+public class TransactionMessage extends Message {
 
-	static final Log log = LogFactory.getLog(StoreMessage.class);
+	static final Log log = LogFactory.getLog(TransactionMessage.class);
 
-	public Store store;
+	public Transaction transaction;
 
-	public StoreMessage() {
-		super("store");
+	public TransactionMessage() {
+		super("transaction");
 	}
 
-	public StoreMessage(byte[] payload) throws IOException {
-		super("store");
+	public TransactionMessage(byte[] payload) throws IOException {
+		super("transaction");
 		try (BlockChainInput input = new BlockChainInput(new ByteArrayInputStream(payload))) {
-			this.store = new Store(input);
+			this.transaction = new Transaction(input);
 		}
 	}
 
 	@Override
 	protected byte[] getPayload() {
-		return this.store.toByteArray();
+		return this.transaction.toByteArray();
 	}
 
 	/**
-	 * Validate store.
+	 * Validate transaction.
 	 */
-	public boolean validateStore() {
+	public boolean validateTransaction() {
 
 		return true;
 	}
 
 	@Override
 	public String toString() {
-		return "StoreMessage(lockTime=" + this.store.lock_time + ")";
+		return "TransactionMessage(lockTime=" + this.transaction.lock_time + ")";
 	}
 
 }

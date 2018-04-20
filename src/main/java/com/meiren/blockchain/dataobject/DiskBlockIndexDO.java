@@ -16,6 +16,7 @@ public class DiskBlockIndexDO {
 	public int nBlockPos;
 	// block height
 	public int nHeight;
+	public int nBlockSize;
 
 	//next block hash
 	public String nextHash;
@@ -64,6 +65,14 @@ public class DiskBlockIndexDO {
 
 	public void setnHeight(int nHeight) {
 		this.nHeight = nHeight;
+	}
+
+	public int getnBlockSize() {
+		return nBlockSize;
+	}
+
+	public void setnBlockSize(int nBlockSize) {
+		this.nBlockSize = nBlockSize;
 	}
 
 	public String getNextHash() {

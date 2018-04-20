@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.meiren.blockchain.dao.DiskUTxOIndexDAO" >
+<resultMap id="getUTxO_RM" type="com.meiren.blockchain.dataobject.DiskUTxOIndexDO">
+	
+					<result property="txHash" column="tx_hash"/>
+			
+					<result property="blockHash" column="block_hash"/>
+			
+					<result property="txIndex" column="tx_index"/>
+
+					<result property="receiver" column="receiver"/>
+
+					<result property="outIndex" column="out_index"/>
+</resultMap>
+
+<!-- 所有字段 -->
+<sql id="All_DiskUTxOIndex_Fields">
+						tx_hash,
+			            block_hash,
+			            tx_index,
+			            receiver,
+			            out_index
+		
+</sql>
+
+<insert id="create" parameterType="com.meiren.blockchain.dataobject.DiskUTxOIndexDO" >
+	INSERT INTO disk_utxo_index (
+											tx_hash,
+								block_hash,
+								tx_index,
+								receiver,
+								out_index
+				)
+	VALUES (
+											#{txHash},
+								#{blockHash},
+								#{txIndex},
+								#{receiver},
+								#{outIndex}
+				)
+</insert>
+
+	<delete id="delete" parameterType="java.util.Map">
+		DELETE FROM disk_utxo_index
+		WHERE
+		tx_hash = #{txHash} AND out_index = #{outIndex}
+	</delete>
+
+	<select id="findByTxHashAndOutIndex" resultType="com.meiren.blockchain.dataobject.DiskUTxOIndexDO" parameterType="java.util.Map">
+		SELECT <include refid="All_DiskUTxOIndex_Fields" />
+		FROM disk_utxo_index
+		WHERE tx_hash = #{txHash} AND out_index = #{outIndex}
+	</select>
+</mapper>

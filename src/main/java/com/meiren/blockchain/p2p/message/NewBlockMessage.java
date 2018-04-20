@@ -52,7 +52,7 @@ public class NewBlockMessage extends Message {
 
 	@Override
 	public String toString() {
-		return "NewBlockMessage(txnCount=" + this.block.stores.length + ")";
+		return "NewBlockMessage(txnCount=" + this.block.transactions.length + ")";
 	}
 
 }

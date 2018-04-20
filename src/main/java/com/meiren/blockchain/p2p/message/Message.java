@@ -5,6 +5,7 @@ import com.meiren.blockchain.common.constant.BlockChainConstants;
 import com.meiren.blockchain.common.io.BlockChainInput;
 import com.meiren.blockchain.common.io.BlockChainOutput;
 import com.meiren.blockchain.common.util.HashUtils;
+import com.meiren.blockchain.entity.Transaction;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -100,6 +101,7 @@ public abstract class Message {
 			map.put("masterIp", MasterIpMessage.class);
 			map.put("checkBlock", CheckBlockMessage.class);
 			map.put("newBlock", NewBlockMessage.class);
+			map.put("transaction", TransactionMessage.class);
 			return map;
 		}
 

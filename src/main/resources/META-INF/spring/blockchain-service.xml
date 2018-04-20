@@ -49,4 +49,7 @@
 	<bean id="blockService" class="com.meiren.blockchain.service.Impl.BlockServiceImpl"/>
 	<bean id="diskBlockIndexService" class="com.meiren.blockchain.service.Impl.DiskBlockIndexServiceImpl"/>
 	<bean id="blockIndexService" class="com.meiren.blockchain.service.Impl.BlockIndexServiceImpl"/>
+	<bean id="transactionService" class="com.meiren.blockchain.service.Impl.TransactionServiceImpl"/>
+	<bean id="diskUTxOIndexService" class="com.meiren.blockchain.service.Impl.DiskUTxOIndexServiceImpl"/>
+	<bean id="diskTxIndexService" class="com.meiren.blockchain.service.Impl.DiskTxIndexServiceImpl"/>
 </beans>

@@ -9,10 +9,7 @@ import com.meiren.blockchain.dataobject.DiskBlockIndexDO;
 import com.meiren.blockchain.entity.*;
 import com.meiren.blockchain.p2p.*;
 import com.meiren.blockchain.p2p.message.*;
-import com.meiren.blockchain.service.BlockIndexService;
-import com.meiren.blockchain.service.BlockService;
-import com.meiren.blockchain.service.DiskBlockIndexService;
-import com.meiren.blockchain.service.StoreService;
+import com.meiren.blockchain.service.*;
 import com.meiren.common.utils.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -28,7 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.ServerSocket;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -62,9 +59,9 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	private Deque<Block> deque = new LinkedList<>();
 
 	/**
-	 * StoreMessage objects.
+	 * TransactionMessage objects.
 	 */
-	private volatile Map<String, Store> storePool = new LinkedHashMap<>();
+	private volatile Map<String, Transaction> transactionPool = new LinkedHashMap<>();
 
 	/**
 	 * Cached Block data that cannot process now. key=prevHash
@@ -81,11 +78,15 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	@Autowired
 	private DiskBlockIndexService diskBlockIndexService;
 	@Autowired
-	private StoreService storeService;
-	@Autowired
 	private DiskBlockIndexDAO diskBlockIndexDAO;
 	@Autowired
 	private BlockIndexService blockIndexService;
+	@Autowired
+	private DiskUTxOIndexService diskUTxOIndexService;
+	@Autowired
+	private DiskTxIndexService diskTxIndexService;
+	@Autowired
+	private TransactionService transactionService;
 
 	@Value("${blockindex.disk.path}")
 	private String pathDisk;
@@ -121,9 +122,9 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 
 	}
 
-	public Block nextBlock(Store[] stores, byte[] prevHash) {
+	public Block nextBlock(Transaction[] transactions, byte[] prevHash) {
 		Block block = new Block();
-		block.stores = stores;
+		block.transactions = transactions;
 		int version = 1;
 		long timestamp = Instant.now().getEpochSecond();
 		byte[] merkleHash = block.calculateMerkleHash();
@@ -176,19 +177,44 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 
 	}
 
-	public void init() throws IOException {
-//		for(int i=1;i<3;i++){
-//			StoreService storeService = new StoreServiceImpl();
-//			byte[] result = storeService.buildStore("http://meiren.pic.2"+i+".jpg");
-//			JsonUtils.printJson(result);
-//			BlockChainInput input = new BlockChainInput(result);
-//			Store store = new Store(input);
-//			this.storePool.put(HashUtils.toHexStringAsLittleEndian(store.getStoreHash()), store);
-//		}
+	public Block readFromDiskBySize(int nFile, int begin, int size){
+		String pathBlk = pathDisk;
+		Block block = null;
+		FileInputStream fis = null;
+		try {
+			fis = new FileInputStream(pathBlk+ blockFilePrefix +nFile+blockFileExtension);
+			fis.skip(begin);
+			byte[] result = new byte[size];
+			fis.read(result);
+			BlockChainInput input = new BlockChainInput(result);
+			block = new Block(input);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}finally {
+			try {
+				if(fis != null)
+					fis.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		JsonUtils.printJson(block);
+		return block;
+	}
 
+	@Override
+	public void sendTransaction(Transaction transaction) {
+		try {
+			this.pool.sendMessage(new TransactionMessage(transaction.toByteArray()));
+			log.info("send Transaction successfully! ");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void init() throws IOException {
 		initBlockData();
 		initConnectionPool();
-//		leader();
 		new Thread(new Runnable(){
 			@Override
 			public void run() {
@@ -215,61 +241,25 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		}
 	}
 
-	public void sendStore(Store store){
-		StoreMessage storeMessage = null;
-		try {
-			storeMessage = new StoreMessage(store.toByteArray());
-			this.pool.sendMessage(storeMessage);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
 	private void initBlockData() throws IOException {
-//		int nFile = diskBlockIndexService.getMaxnFile();
 		BlockIndex blockIndex = blockIndexService.getLastestBlockIndex();
-		int nFile ;
-		int begin ;
-		int end;
+		Block last = null;
 		if (blockIndex == null) {
 			// add genesis block:
 			log.info("Add genesis block...");
-//			try (BlockChainInput input = new BlockChainInput(BlockChainConstants.GENESIS_BLOCK_DATA)) {
-//				Block gb = new Block(input);
-//				processNextBlock(gb);
-//			}
-
-//			Store[] stores = new Store[1];
-//			byte[] result = storeService.buildStore("meiren_blockchain_service");
-//			BlockChainInput input = new BlockChainInput(result);
-//			Store store = new Store(input);
-//			stores[0] = store;
-//			Block block = nextBlock(stores, HashUtils.toBytesAsLittleEndian("0000000000000000000000000000000000000000000000000000000000000000"));
-//			HashUtils.toHexStringAsLittleEndian(block.toByteArray());
 			BlockChainInput input = new BlockChainInput(BlockChainConstants.GENESIS_BLOCK_DATA);
-			Block block = new Block(input);
-			processNextBlock(block);
-			nFile = 1;
-			begin = 0;
-			end = block.toByteArray().length;
+			last = new Block(input);
+			processNextBlock(last);
 		}else {
-			nFile = blockIndex.nFile;
-			BlockIndex blockIndexPrev = blockIndex.pprev;
-			if(blockIndexPrev == null || blockIndex.nFile != blockIndexPrev.nFile){//第一个block获取block在新的dat文件的第一个
-				begin = 0;
-				end = blockIndex.nBlockPos;
-			}else {
-				begin = blockIndexPrev.nBlockPos;
-				end = blockIndex.nBlockPos;
-			}
+			int nFile = blockIndex.nFile;
+			int begin = blockIndex.nBlockPos;
+			int size = blockIndex.nBlockSize;
+			// get last block:
+			last = readFromDiskBySize(nFile, begin, size);
 		}
-		// get last block:
-		Block last = readFromDisk(nFile, begin, end);
 		this.lastBlockHash = HashUtils.toHexStringAsLittleEndian(last.getBlockHash());
 		log.info("Last block: " + this.lastBlockHash + " created at "
 				+ Instant.ofEpochSecond(last.header.timestamp).atZone(ZoneId.systemDefault()).toString());
-//		long n = (Instant.now().getEpochSecond() - last.header.timestamp) / 600;
-//		log.info("Needs to synchronize about " + n + " blocks...");
 	}
 
 	private void initConnectionPool() {
@@ -292,24 +282,6 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				return;
 			}
 			this.processNextBlock(block);
-		} finally {
-			lock.unlock();
-		}
-	}
-
-	@Scheduled(initialDelay = 10_000, fixedRate = 3_000)
-	public void processStore() {
-		lock.lock();
-		try {
-			StoreService storeService = new StoreServiceImpl();
-			byte[] result = storeService.buildStore("http://meiren.pic."+System.currentTimeMillis()+".jpg");
-			JsonUtils.printJson(result);
-			BlockChainInput input = new BlockChainInput(result);
-			Store store = new Store(input);
-			this.pool.sendMessage(new StoreMessage(store.toByteArray()));
-			this.storePool.put(HashUtils.toHexStringAsLittleEndian(store.getStoreHash()), store);
-		} catch (IOException e) {
-			e.printStackTrace();
 		} finally {
 			lock.unlock();
 		}
@@ -353,24 +325,26 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 
 	//定义一个按一定频率执行的定时任务，每隔10分钟执行一次，延迟10秒执行
 //	@Scheduled(initialDelay =10*1000 , fixedRate = 10*60*1000)
-	public Block packStoresIntoBlock() {
+	public Block packTransactionsIntoBlock() {
 //		if(this.masterIp.equals(NetworkUtils.getLocalInetAddress().getHostAddress())){
 			lock.lock();
 			try {
 				//当前store池有多少待处理的
-				int size = this.storePool.size();
-				log.info("pack "+size+" stores into block!");
+				int size = this.transactionPool.size();
+				log.info("pack "+size+" transactions into block!");
 				if(size == 0) {
 					return null;
 				}
-//				int size1 =1;
-				Store[] stores = new Store[size];
-				Iterator<Map.Entry<String, Store>> it = this.storePool.entrySet().iterator();
+				if(size > 1000){
+					size = 1000;
+				}
+				Transaction[] transactions = new Transaction[size];
+				Iterator<Map.Entry<String, Transaction>> it = this.transactionPool.entrySet().iterator();
 				int index = 0;
 				while (it.hasNext()) {
-					Map.Entry<String, Store> entry = it.next();
+					Map.Entry<String, Transaction> entry = it.next();
 					//				System.out.println(entry.getKey() + ":" + entry.getValue());
-					stores[index] = entry.getValue();
+					transactions[index] = entry.getValue();
 					//				it.remove(); //删除元素
 
 					index++;
@@ -378,7 +352,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 						break;
 					}
 				}
-				Block newBlock = nextBlock(stores, HashUtils.toBytesAsLittleEndian(this.lastBlockHash));
+				Block newBlock = nextBlock(transactions, HashUtils.toBytesAsLittleEndian(this.lastBlockHash));
 				log.info("pack a new block, blockHash:"+ HashUtils.toHexStringAsLittleEndian(newBlock.getBlockHash()));
 				try {
 					this.pool.sendMessage(new NewBlockMessage(newBlock.toByteArray()));
@@ -423,7 +397,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				this.deque.offerLast(next);
 				lastHash = HashUtils.toHexStringAsLittleEndian(next.getBlockHash());
 			}
-			removeStore(block);
+			removeTransactions(block);
 			return true;
 		} finally {
 			lock.unlock();
@@ -433,18 +407,18 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	/**
 	 * handle store which is received from peer to join StorePool
 	 */
-	private Boolean joinStorePoolFromPeer(Store store) {
-		final String hash = HashUtils.toHexStringAsLittleEndian(store.getStoreHash());
-		log.info("store join poor " + hash + " from peer...");
+	private Boolean joinTransactionPoolFromPeer(Transaction transaction) {
+		final String hash = HashUtils.toHexStringAsLittleEndian(transaction.getTxHash());
+		log.info("transaction join poor " + hash + " from peer...");
 		lock.lock();
 		try {
 			// already exist?
-			if(this.storePool.containsKey(hash)){
-				log.info("store " + hash + " was already in pool.");
+			if(this.transactionPool.containsKey(hash)){
+				log.info("transaction " + hash + " was already in pool.");
 				return false;
 			}
-			this.storePool.put(hash, store);
-			log.info("store " + hash + " was added in pool.");
+			this.transactionPool.put(hash, transaction);
+			log.info("transaction " + hash + " was added in pool.");
 			return true;
 		} finally {
 			lock.unlock();
@@ -462,13 +436,8 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				String blockHash = HashUtils.toHexStringAsLittleEndian(getBlocksMsg.getHashes()[0]);
 				while(true){
 						DiskBlockIndexDO diskBlockIndexDO = diskBlockIndexDAO.findByPrevBlockHash(blockHash);
-					DiskBlockIndexDO diskBlockIndexDOPrev = diskBlockIndexDAO.findByBlockHash(blockHash);
 					if(diskBlockIndexDO != null){
-						int begin = 0;
-						if(diskBlockIndexDOPrev != null && diskBlockIndexDOPrev.getnFile() == diskBlockIndexDO.getnFile()){
-							begin = diskBlockIndexDOPrev.getnBlockPos();
-						}
-						Block block = readFromDisk(diskBlockIndexDO.getnFile(), begin, diskBlockIndexDO.getnBlockPos());
+						Block block = readFromDiskBySize(diskBlockIndexDO.getnFile(), diskBlockIndexDO.getnBlockPos(), diskBlockIndexDO.getnBlockSize());
 						sender.sendMessage(new BlockMessage(block.toByteArray()));
 						if(StringUtils.isBlank(diskBlockIndexDO.getNextHash())){
 							break;
@@ -482,13 +451,8 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				for(byte[] hash : getBlocksMsg.getHashes()){
 					String blockHash = HashUtils.toHexStringAsLittleEndian(hash);
 					DiskBlockIndexDO diskBlockIndexDO = diskBlockIndexDAO.findByPrevBlockHash(blockHash);
-					DiskBlockIndexDO diskBlockIndexDOPrev = diskBlockIndexDAO.findByBlockHash(blockHash);
 					if(diskBlockIndexDO != null){
-						int begin = 0;
-						if(diskBlockIndexDOPrev != null && diskBlockIndexDOPrev.getnFile() == diskBlockIndexDO.getnFile()){
-							begin = diskBlockIndexDOPrev.getnBlockPos();
-						}
-						Block block = readFromDisk(diskBlockIndexDO.getnFile(), begin, diskBlockIndexDO.getnBlockPos());
+						Block block = readFromDiskBySize(diskBlockIndexDO.getnFile(), diskBlockIndexDO.getnBlockPos(), diskBlockIndexDO.getnBlockSize());
 						sender.sendMessage(new BlockMessage(block.toByteArray()));
 					}
 				}
@@ -515,7 +479,6 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				log.warn("Validate block failed: expected prevHash = " + this.lastBlockHash + ", actual = " + prevHash);
 				// cannot continue process:
 				this.deque.clear();
-//				System.exit(1);
 				return;
 			}
 			// check merkle root:
@@ -525,27 +488,24 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				log.error("Invalid merkle hash: expected = " + expectedMerkle + ", actual = " + actualMerkle);
 				// cannot continue process:
 				this.deque.clear();
-//				System.exit(1);
 				return;
 			}
 			// check stores:
-			if (!checkStores(block)) {
-				log.error("Check stores failed.");
+			if (!checkTransactions(block)) {
+				log.error("Check transactions failed.");
 				this.deque.clear();
-//				System.exit(1);
 				return;
 			}
 			int nFile = diskBlockIndexService.getMaxnFile();
 			BlockIndex lastestBlockIndex = blockIndexService.getLastestBlockIndex();
 			int nHeight = 1;
-			int nBlockPos = 0;
+
 			if(lastestBlockIndex != null){
 				nHeight = lastestBlockIndex.nHeight + 1;
-				nBlockPos = lastestBlockIndex.nBlockPos;
-
 			}
-			long size = BlockChainFileUtils.getFileSize(pathDisk + blockFilePrefix+nFile+blockFileExtension);
-			if(size > 1024 * 1024 * 10 || nFile == 0){//如果文件已经大于10M，写入新文件中
+			int nBlockPos = (int) BlockChainFileUtils.getFileSize(pathDisk + blockFilePrefix+nFile+blockFileExtension);
+
+			if(nBlockPos > 1024 * 1024 * 10 || nFile == 0){//如果文件已经大于10M，写入新文件中
 				nFile++;
 				nBlockPos = 0;
 			}
@@ -556,7 +516,8 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			diskBlockIndex.pHashBlock = block.getBlockHash();
 			diskBlockIndex.nFile = nFile;
 			diskBlockIndex.nHeight = nHeight;
-			diskBlockIndex.nBlockPos = block.toByteArray().length + nBlockPos;
+			diskBlockIndex.nBlockPos = nBlockPos;
+			diskBlockIndex.nBlockSize = block.toByteArray().length;
 			diskBlockIndex.nextHash = null;
 			diskBlockIndex.version = 1;
 			diskBlockIndex.prevHash = block.header.prevHash;
@@ -566,6 +527,12 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			diskBlockIndex.nonce = block.header.nonce;
 			diskBlockIndexService.writeToDisk(diskBlockIndex);
 			log.info("Added block: " + hash);
+			diskTxIndexService.writeToDiskBlock(block, nFile, nBlockPos);
+			log.info("update the tx index in block: " + hash);
+			diskUTxOIndexService.writeToDiskBlock(block);
+			diskUTxOIndexService.removeFromBlock(block);
+			log.info("update the utxo index in block: " + hash);
+
 		} finally {
 			lock.unlock();
 		}
@@ -574,16 +541,22 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	/**
 	 * check the stores in Block which is received from peer
 	 * */
-	private boolean checkStores(Block block) {
+	private boolean checkTransactions(Block block) {
+		Transaction[] transactions = block.transactions;
+		for (Transaction transaction: transactions){
+			if(!transactionService.verify(transaction.tx_ins, transaction.tx_outs, transaction.operatorHash)){
+				return Boolean.FALSE;
+			}
+		}
 		return Boolean.TRUE;
 	}
 
 	/**
 	 * remove store from storesPool
 	 */
-	public boolean removeStore(Block block){
-		for(Store store :block.stores){
-			this.storePool.remove(HashUtils.toHexStringAsLittleEndian(store.getStoreHash()));
+	public boolean removeTransactions(Block block){
+		for(Transaction transaction :block.transactions){
+			this.transactionPool.remove(HashUtils.toHexStringAsLittleEndian(transaction.getTxHash()));
 		}
 		return true;
 	}
@@ -597,40 +570,16 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 	@Override
 	public void onMessage(MessageSender sender, Message msg) {
 
-//		if(msg instanceof GetMasterIpMessage){
-//			sender.sendMessage(new MasterIpMessage(this.masterIp));
-//			return;
-//		}
-//		if(msg instanceof MasterIpMessage){
-//			if (!StringUtils.isBlank(this.masterIp) && (this.pool.getConnectionMap()
-//					.containsKey(this.masterIp) || localhostIp.equals(this.masterIp))) {
-////				sender.sendMessage(new MasterIpMessage(this.masterIp));
-//				return;
-//			}
-//			MasterIpMessage masterIpMessage = (MasterIpMessage) msg;
-//			if(StringUtils.isBlank(masterIpMessage.masterIp)){
-//				this.masterIp = calMasterIp(this.pool.getConnectionMap());
-//				this.pool.sendMessage(new MasterIpMessage(this.masterIp));
-//				return;
-//			}else if(this.pool.getConnectionMap().containsKey(masterIpMessage.masterIp) || masterIpMessage.masterIp.equals(this.localhostIp)){
-//				this.masterIp = masterIpMessage.masterIp;
-//				sender.sendMessage(new MasterIpMessage(this.masterIp));
-//				return;
-//			}
-//		}
 		if (msg instanceof PingMessage) {
 			sender.sendMessage(new PongMessage(((PingMessage) msg).getNonce()));
 			return;
 		}
 		if (msg instanceof VerAckMessage) {
-			//			sender.sendMessage(new GetBlocksMessage(HashUtils.toBytesAsLittleEndian(this.lastBlockHash),
-			//					BlockChainConstants.ZERO_HASH_BYTES));
 			return;
 		}
 		if (msg instanceof VersionMessage) {
 			sender.sendMessage(new VerAckMessage());
-//			sender.sendMessage(new GetBlocksMessage(HashUtils.toBytesAsLittleEndian(this.lastBlockHash),
-//					BlockChainConstants.ZERO_HASH_BYTES));
+
 			return;
 		}
 		if (msg instanceof InvMessage) {
@@ -647,16 +596,15 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			sender.setTimeout(60*1000);
 			BlockMessage blockMsg = (BlockMessage) msg;
 			log.info("Get block data: " + HashUtils.toHexStringAsLittleEndian(blockMsg.block.getBlockHash()));
-			if(blockMsg.validateHash()){
+			if(blockMsg.validateHash() && checkTransactions(blockMsg.block)){
 				processBlockFromPeer(blockMsg.block);
 			}
 		}
-		if (msg instanceof StoreMessage) {
-//			sender.setTimeout(60*1000);
-			StoreMessage storeMsg = (StoreMessage) msg;
-			if(storeMsg.validateStore()){
-				if(joinStorePoolFromPeer(storeMsg.store)){
-					this.pool.sendMessage(storeMsg);
+		if (msg instanceof TransactionMessage) {
+			TransactionMessage transactionMsg = (TransactionMessage) msg;
+			if(transactionMsg.validateTransaction()){
+				if(joinTransactionPoolFromPeer(transactionMsg.transaction)){
+					this.pool.sendMessage(transactionMsg);
 				}
 			}
 		}
@@ -668,8 +616,8 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		if (msg instanceof NewBlockMessage) {
 			sender.setTimeout(60*1000);
 			NewBlockMessage newBlockMsg = (NewBlockMessage) msg;
-			log.info("Get block data: " + HashUtils.toHexStringAsLittleEndian(newBlockMsg.block.getBlockHash()));
-			if(newBlockMsg.validateHash()){
+			log.info("Get new block that is waiting to check data: " + HashUtils.toHexStringAsLittleEndian(newBlockMsg.block.getBlockHash()));
+			if(newBlockMsg.validateHash() && checkTransactions(newBlockMsg.block)){
 //				processBlockFromPeer(newBlockMsg.block);
 //				this.pool.sendMessage(newBlockMsg);
 				if(this.lastBlockHash.equals(HashUtils.toHexStringAsLittleEndian(newBlockMsg.block.header.prevHash))){
@@ -697,51 +645,6 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		}
 	}
 
-	//	private String calMasterIp(Map<String, PeerConnection> connectionMap) {
-//		String masterIp = this.localhostIp;
-//		for(String key : connectionMap.keySet()){
-//			if(key.compareTo(masterIp) < 0){
-//				masterIp = key;
-//			}
-//		}
-//		return masterIp;
-//	}
-//
-//	private int noMasterIpCount = 0;
-//	/**
-//	 * check the masterIp is available.
-//	 */
-//	//1.initialDelay :初次执行任务之前需要等待的时间
-//	//2.fixedRate:执行频率，每隔多少时间就启动任务，不管该任务是否启动完成
-//	@Scheduled(initialDelay = 10_000, fixedRate = 5_000)
-//	public void checkMasterIp() {
-//		System.out.println("now the masterIp is : "+this.masterIp);
-////		if(this.pool.getConnectionMap().size() == 0 && count ==0){
-////			this.masterIp = this.localhostIp;
-////		}
-////		if(this.pool.getConnectionMap().size() == 0 && count >0){
-////			this.masterIp="";
-////		}
-//		if(StringUtils.isBlank(this.masterIp)){
-//			noMasterIpCount++;
-//			if(noMasterIpCount >= 5){
-//				System.exit(1);
-//			}
-//			this.pool.sendMessage(new GetMasterIpMessage());
-//			return;
-//		}else {
-//			noMasterIpCount = 0;
-//		}
-//		if(!this.pool.getConnectionMap().containsKey(this.masterIp) && !this.localhostIp.equals(this.masterIp)){
-////			this.pool.sendMessage(new MasterIpMessage(calMasterIp(this.pool.getConnectionMap())));
-//			this.masterIp = "";
-//			this.pool.sendMessage(new GetMasterIpMessage());
-//		}
-//	}
-
-//	private static final String PATH = "/blockChain/leader";
-//	private boolean waitGetLastest = true;
-//	private boolean isLastest = false;
 	private volatile boolean waitCheckBlock = true;
 	private volatile int countSure = 0;
 	private volatile int countAllConn = 0;
@@ -768,17 +671,8 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				@Override
 				public void takeLeadership(CuratorFramework client) throws Exception {
 					System.out.println(name + ":I am leader.");
-					//						client.getZookeeperClient();
-//					waitGetLastest = true;
-//					pool.sendMessage(new GetBlocksMessage(HashUtils.toBytesAsLittleEndian(lastBlockHash),
-//												BlockChainConstants.ZERO_HASH_BYTES));
-//					while (waitGetLastest){//阻塞，直到等到其他节点返回
-//					}
-//					if(!isLastest){
-//						return;
-//					}
 					waitCheckBlock = true;
-					Block block = packStoresIntoBlock();
+					Block block = packTransactionsIntoBlock();
 					if(block == null){
 						Thread.sleep(10000);
 						return;
@@ -795,7 +689,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 						pool.sendMessage(new BlockMessage(block.toByteArray()));
 
 						processNextBlock(block);
-						removeStore(block);
+						removeTransactions(block);
 						/**
 						 * 这里可以处理保存每个图片对应的blockHash和在block对应的index，用于查询
 						 * */

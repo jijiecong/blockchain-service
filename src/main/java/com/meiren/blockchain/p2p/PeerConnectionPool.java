@@ -89,7 +89,7 @@ public class PeerConnectionPool extends Thread implements PeerListener {
 	 * Send message to all connected peers.
 	 * 
 	 * @param message
-	 *            Bitcoin message object.
+	 *            message object.
 	 * @return Number of peers sent.
 	 */
 	public int sendMessage(Message message) {

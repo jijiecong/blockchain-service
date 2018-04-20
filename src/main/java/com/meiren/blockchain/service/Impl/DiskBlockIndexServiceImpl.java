@@ -37,6 +37,7 @@ public class DiskBlockIndexServiceImpl implements DiskBlockIndexService {
 		diskBlockIndexDO.setnFile(diskBlockIndex.nFile);
 		diskBlockIndexDO.setnBlockPos(diskBlockIndex.nBlockPos);
 		diskBlockIndexDO.setnHeight(diskBlockIndex.nHeight);
+		diskBlockIndexDO.setnBlockSize(diskBlockIndex.nBlockSize);
 		diskBlockIndexDO.setNextHash(diskBlockIndex.nextHash == null?null:HashUtils.toHexStringAsLittleEndian(diskBlockIndex.nextHash));
 		diskBlockIndexDO.setVersion(diskBlockIndex.version);
 		diskBlockIndexDO.setPrevHash(HashUtils.toHexStringAsLittleEndian(diskBlockIndex.prevHash));
