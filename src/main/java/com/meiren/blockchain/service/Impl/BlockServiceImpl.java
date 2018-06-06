@@ -172,7 +172,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		JsonUtils.printJson(block);
+//		JsonUtils.printJson(block);
 		return block;
 
 	}
@@ -198,7 +198,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 				e.printStackTrace();
 			}
 		}
-		JsonUtils.printJson(block);
+//		JsonUtils.printJson(block);
 		return block;
 	}
 
@@ -596,7 +596,7 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			sender.setTimeout(60*1000);
 			BlockMessage blockMsg = (BlockMessage) msg;
 			log.info("Get block data: " + HashUtils.toHexStringAsLittleEndian(blockMsg.block.getBlockHash()));
-			if(blockMsg.validateHash() && checkTransactions(blockMsg.block)){
+			if(blockMsg.validateHash() ){//&& checkTransactions(blockMsg.block)
 				processBlockFromPeer(blockMsg.block);
 			}
 		}
@@ -617,14 +617,11 @@ public class BlockServiceImpl implements BlockService,MessageListener {
 			sender.setTimeout(60*1000);
 			NewBlockMessage newBlockMsg = (NewBlockMessage) msg;
 			log.info("Get new block that is waiting to check data: " + HashUtils.toHexStringAsLittleEndian(newBlockMsg.block.getBlockHash()));
-			if(newBlockMsg.validateHash() && checkTransactions(newBlockMsg.block)){
-//				processBlockFromPeer(newBlockMsg.block);
-//				this.pool.sendMessage(newBlockMsg);
-				if(this.lastBlockHash.equals(HashUtils.toHexStringAsLittleEndian(newBlockMsg.block.header.prevHash))){
-					sender.sendMessage(new CheckBlockMessage("success"));
-				}else {
-					sender.sendMessage(new CheckBlockMessage("failed"));
-				}
+			if(newBlockMsg.validateHash() && this.lastBlockHash.equals(HashUtils.toHexStringAsLittleEndian(newBlockMsg.block.header.prevHash))
+					&& checkTransactions(newBlockMsg.block)){
+				sender.sendMessage(new CheckBlockMessage("success"));
+			}else {
+				sender.sendMessage(new CheckBlockMessage("failed"));
 			}
 		}
 		if (msg instanceof CheckBlockMessage) {

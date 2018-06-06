@@ -52,4 +52,5 @@
 	<bean id="transactionService" class="com.meiren.blockchain.service.Impl.TransactionServiceImpl"/>
 	<bean id="diskUTxOIndexService" class="com.meiren.blockchain.service.Impl.DiskUTxOIndexServiceImpl"/>
 	<bean id="diskTxIndexService" class="com.meiren.blockchain.service.Impl.DiskTxIndexServiceImpl"/>
+	<bean id="uTxOService" class="com.meiren.blockchain.service.Impl.UTxOServiceImpl"/>
 </beans>

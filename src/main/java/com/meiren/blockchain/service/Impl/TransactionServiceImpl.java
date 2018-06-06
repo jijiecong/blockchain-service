@@ -129,7 +129,7 @@ public class TransactionServiceImpl implements TransactionService{
 				e.printStackTrace();
 			}
 		}
-		JsonUtils.printJson(transaction);
+//		JsonUtils.printJson(transaction);
 		return transaction;
 	}
 }

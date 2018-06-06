@@ -53,4 +53,10 @@
 		FROM disk_utxo_index
 		WHERE tx_hash = #{txHash} AND out_index = #{outIndex}
 	</select>
+
+	<select id="findByReceiver" resultType="com.meiren.blockchain.dataobject.DiskUTxOIndexDO" parameterType="String">
+		SELECT <include refid="All_DiskUTxOIndex_Fields" />
+		FROM disk_utxo_index
+		WHERE receiver = #{receiver}
+	</select>
 </mapper>

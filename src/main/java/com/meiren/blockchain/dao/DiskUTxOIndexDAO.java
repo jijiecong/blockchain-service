@@ -2,6 +2,7 @@ package com.meiren.blockchain.dao;
 
 import com.meiren.blockchain.dataobject.DiskUTxOIndexDO;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,4 +31,10 @@ public interface DiskUTxOIndexDAO {
 	 * @param findMap
 	 */
 	public DiskUTxOIndexDO findByTxHashAndOutIndex(Map<String, Object> findMap);
+
+	/**
+	 * findByReceiver.
+	 * @param receiver
+	 */
+	public List<DiskUTxOIndexDO> findByReceiver(String receiver);
 }

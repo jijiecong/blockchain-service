@@ -12,11 +12,11 @@ public class DiskUTxOIndexDO {
 
 	public String txHash;
 
-	public Long txIndex;
+	public long txIndex;
 
 	public String receiver;
 
-	public Long outIndex;
+	public long outIndex;
 
 	public String getBlockHash() {
 		return blockHash;
@@ -34,11 +34,11 @@ public class DiskUTxOIndexDO {
 		this.txHash = txHash;
 	}
 
-	public Long getTxIndex() {
+	public long getTxIndex() {
 		return txIndex;
 	}
 
-	public void setTxIndex(Long txIndex) {
+	public void setTxIndex(long txIndex) {
 		this.txIndex = txIndex;
 	}
 
@@ -50,11 +50,11 @@ public class DiskUTxOIndexDO {
 		this.receiver = receiver;
 	}
 
-	public Long getOutIndex() {
+	public long getOutIndex() {
 		return outIndex;
 	}
 
-	public void setOutIndex(Long outIndex) {
+	public void setOutIndex(long outIndex) {
 		this.outIndex = outIndex;
 	}
 }

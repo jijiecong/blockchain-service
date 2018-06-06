@@ -8,6 +8,7 @@ import com.meiren.blockchain.service.DiskUTxOIndexService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.management.ObjectName;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,8 +55,22 @@ public class DiskUTxOIndexServiceImpl implements DiskUTxOIndexService{
 	}
 
 	@Override
-	public List<DiskUTxOIndex> readFromDiskByReceiver(byte[] receiver) {
-		return null;
+	public List<DiskUTxOIndex> readFromDiskByReceiver(String receiver) {
+		List<DiskUTxOIndexDO>  diskUTxOIndexDOS = diskUTxOIndexDAO.findByReceiver(receiver);
+		if(diskUTxOIndexDOS.size() == 0){
+			return null;
+		}
+		List<DiskUTxOIndex> diskUTxOIndices = new ArrayList<>();
+		for(DiskUTxOIndexDO diskUTxOIndexDO: diskUTxOIndexDOS){
+			DiskUTxOIndex diskUTxOIndex = new DiskUTxOIndex();
+			diskUTxOIndex.txHash = HashUtils.toBytesAsLittleEndian(diskUTxOIndexDO.getTxHash());
+			diskUTxOIndex.blockHash = HashUtils.toBytesAsLittleEndian(diskUTxOIndexDO.getBlockHash());
+			diskUTxOIndex.txIndex = diskUTxOIndexDO.getTxIndex();
+			diskUTxOIndex.outIndex = diskUTxOIndexDO.getOutIndex();
+			diskUTxOIndex.receiver = diskUTxOIndexDO.getReceiver().getBytes();
+			diskUTxOIndices.add(diskUTxOIndex);
+		}
+		return diskUTxOIndices;
 	}
 
 	@Override

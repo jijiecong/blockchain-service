@@ -4,22 +4,22 @@ import com.meiren.blockchain.common.constant.BlockChainConstants;
 import com.meiren.blockchain.common.io.BlockChainInput;
 import com.meiren.blockchain.common.util.HashUtils;
 import com.meiren.blockchain.common.util.JsonUtils;
-import com.meiren.blockchain.entity.Transaction;
-import com.meiren.blockchain.entity.TxIn;
-import com.meiren.blockchain.entity.TxOut;
+import com.meiren.blockchain.entity.*;
 import com.meiren.blockchain.service.DiskTxIndexService;
+import com.meiren.blockchain.service.DiskUTxOIndexService;
 import com.meiren.blockchain.service.TransactionService;
 import org.junit.Test;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.FormatFlagsConversionMismatchException;
+import java.util.List;
 
 public class TransactionServiceTest extends BaseServiceTest{
 	ClassPathXmlApplicationContext applicationContext = getApplicationContext();
 
 	TransactionService transactionService = (TransactionService) applicationContext.getBean("transactionService");
-//	DiskTxIndexService diskTxIndexService = (DiskTxIndexService) applicationContext.getBean("diskTxIndexService");
-
 	@Test
 	public void buildTransaction() throws IOException {
 		TxIn[] txIns = new TxIn[1];
